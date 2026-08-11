@@ -2,6 +2,9 @@
 
 ระบบหลังบ้านสำหรับตั้งค่าหน้า **Universal Content Listing** ที่ใช้ได้กับ Job, Blog, News, Product และ Download
 
+- เว็บออนไลน์: https://nuttakarnadletter-jpg.github.io/MS-Job/
+- โค้ดบน GitHub: https://github.com/nuttakarnadletter-jpg/MS-Job
+
 ## เริ่มใช้งาน
 
 ```bash
