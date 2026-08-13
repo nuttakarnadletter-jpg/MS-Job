@@ -1,11 +1,34 @@
-export type ContentTypeId = "job" | "blog" | "news" | "product" | "download";
+export type ContentTypeId = "job" | "blog" | "product" | "download";
 
 export type CardLayout = "top" | "horizontal" | "none";
 export type PaginationType = "pagination" | "loadmore" | "none";
+export type ListingView = "grid" | "list";
 export type EmptyImageBehavior = "placeholder" | "hide" | "default";
 export type DevicePreview = "desktop" | "mobile";
 export type SettingsTab = "listing" | "card" | "detail" | "seo";
 export type PreviewMode = "listing" | "detail";
+export type FilterKey = "category" | "location" | "priceRange" | "status";
+export type BarStyle = "dark" | "card" | "ghost";
+export type CtaStyle = "link" | "button" | "icon";
+export type ClickAction = "detail" | "external" | "file";
+export type MetaIconMode = "default" | "none" | "upload";
+
+export interface MetaIconSetting {
+  mode: MetaIconMode;
+  src?: string;
+}
+
+export interface MobileSettings {
+  hideHomeBar: boolean;
+  hideExtraFilters: boolean;
+  hideThumbnail: boolean;
+  hideDescription: boolean;
+  hideCategory: boolean;
+  hideLocation: boolean;
+  hidePrice: boolean;
+  hideStatus: boolean;
+  hideCta: boolean;
+}
 
 export type MetaSource =
   | "salary"
@@ -29,11 +52,19 @@ export interface ContentItem {
   status: string;
   icon: string;
   imageColor: string;
+  coverImage?: string;
+  sku?: string;
+  publishedAt?: string;
+  clickAction?: ClickAction;
+  externalUrl?: string;
+  fileName?: string;
+  fileUrl?: string;
+  fileSize?: string;
   detailSections: {
     responsibilities?: string[];
     qualifications?: string[];
     benefits?: string[];
-    body?: string[];
+    body?: string;
   };
 }
 
@@ -55,6 +86,10 @@ export interface ContentTypeConfig {
   filterCategory: string;
   filterLocation: string;
   searchFields: { id: string; label: string; defaultOn: boolean }[];
+  priceRangeFilter?: {
+    label: string;
+    options: { id: string; label: string; min?: number; max?: number }[];
+  };
   detailFields: { id: string; label: string; impact: string }[];
   primaryActions: string[];
   metaDefaults: { source: MetaSource; label: string }[];
@@ -66,10 +101,17 @@ export interface DisplaySettings {
     showSearch: boolean;
     searchPlaceholder: string;
     searchFields: string[];
-    showFilters: boolean;
+    primaryFilters: FilterKey[];
+    extraFilters: FilterKey[];
+    barButtonLabel: string;
+    enableHomeBar: boolean;
+    homeBarStyle: BarStyle;
+    listingBarStyle: BarStyle;
     showResultCount: boolean;
     columns: 1 | 2 | 3;
     pagination: PaginationType;
+    allowViewToggle: boolean;
+    defaultView: ListingView;
   };
   card: {
     layout: CardLayout;
@@ -82,7 +124,12 @@ export interface DisplaySettings {
     showPrice: boolean;
     showStatus: boolean;
     showCta: boolean;
+    ctaStyle: CtaStyle;
     ctaLabel: string;
+    ctaIcon: MetaIconSetting;
+    categoryIcon: MetaIconSetting;
+    locationIcon: MetaIconSetting;
+    priceIcon: MetaIconSetting;
     meta1: { source: MetaSource; label: string };
     meta2: { source: MetaSource; label: string };
   };
@@ -104,4 +151,5 @@ export interface DisplaySettings {
     indexable: boolean;
     published: boolean;
   };
+  mobile: MobileSettings;
 }

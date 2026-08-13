@@ -1,11 +1,141 @@
 import { CONTENT_TYPES } from "../data/content";
+import {
+  availableFilters,
+  MAX_PRIMARY_FILTERS,
+  searchPlaceholderFor,
+} from "../data/search";
 import type {
+  BarStyle,
   CardLayout,
   ContentTypeConfig,
+  CtaStyle,
   DisplaySettings,
+  FilterKey,
+  ListingView,
+  MetaIconMode,
+  MetaIconSetting,
   MetaSource,
+  MobileSettings,
 } from "../types";
 import { Field, Section, SwitchRow } from "./ui";
+
+function IconSourcePicker({
+  value,
+  onChange,
+}: {
+  value: MetaIconSetting;
+  onChange: (next: MetaIconSetting) => void;
+}) {
+  const setting = value ?? { mode: "default" as const };
+  const setMode = (mode: MetaIconMode) => onChange({ ...setting, mode });
+
+  return (
+    <div>
+      <div className="icon-mode-toggle">
+        {(
+          [
+            ["none", "ไม่มี"],
+            ["default", "ค่าเริ่มต้น"],
+            ["upload", "อัปโหลด"],
+          ] as const
+        ).map(([mode, label]) => (
+          <button
+            key={mode}
+            type="button"
+            className={setting.mode === mode ? "active" : ""}
+            onClick={() => setMode(mode)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {setting.mode === "upload" ? (
+        <label className="icon-upload">
+          {setting.src ? (
+            <img src={setting.src} alt="" />
+          ) : (
+            <span>เลือกไฟล์รูป</span>
+          )}
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              onChange({ mode: "upload", src: URL.createObjectURL(file) });
+            }}
+          />
+        </label>
+      ) : null}
+    </div>
+  );
+}
+
+const BAR_STYLES: { value: BarStyle; label: string; hint: string }[] = [
+  { value: "dark", label: "แถบเข้ม", hint: "พื้นทึบ ไม่มีขอบ ปุ่มเด่น" },
+  { value: "card", label: "การ์ดขาว", hint: "พื้นขาว มีขอบ ใช้บนพื้นสว่าง" },
+  { value: "ghost", label: "โปร่ง", hint: "ไม่มีกล่อง ทับบนพื้นหน้า" },
+];
+
+function MobileHideChecks({
+  items,
+  mobile,
+  onChange,
+}: {
+  items: { key: keyof MobileSettings; label: string; available: boolean }[];
+  mobile: MobileSettings;
+  onChange: (next: MobileSettings) => void;
+}) {
+  const visible = items.filter((item) => item.available);
+  if (visible.length === 0) {
+    return <p className="help">ยังไม่มีรายการที่เปิดบนเดสก์ท็อปให้ซ่อนเพิ่ม</p>;
+  }
+  return (
+    <div className="checklist">
+      {visible.map((item) => (
+        <label className="check" key={item.key}>
+          <input
+            type="checkbox"
+            checked={Boolean(mobile[item.key])}
+            onChange={() =>
+              onChange({ ...mobile, [item.key]: !mobile[item.key] })
+            }
+          />
+          {item.label}
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function BarStylePicker({
+  value,
+  onChange,
+}: {
+  value: BarStyle;
+  onChange: (next: BarStyle) => void;
+}) {
+  return (
+    <div className="seg">
+      {BAR_STYLES.map((style) => (
+        <button
+          key={style.value}
+          type="button"
+          className={`seg-btn${value === style.value ? " active" : ""}`}
+          onClick={() => onChange(style.value)}
+        >
+          <div className={`mini-bar ${style.value}`}>
+            <span className="mini-slot" />
+            <span className="mini-slot" />
+            <span className="mini-cta" />
+          </div>
+          <span>{style.label}</span>
+          <small>{style.hint}</small>
+        </button>
+      ))}
+    </div>
+  );
+}
 
 const META_SOURCES: { value: MetaSource; label: string }[] = [
   { value: "salary", label: "Salary" },
@@ -34,24 +164,54 @@ export function ListingSettings({
   const patch = (partial: Partial<DisplaySettings["listing"]>) =>
     onChange({ ...settings, listing: { ...listing, ...partial } });
 
+  const filters = availableFilters(config);
+
   const toggleSearchField = (id: string) => {
     const exists = listing.searchFields.includes(id);
+    const searchFields = exists
+      ? listing.searchFields.filter((fieldId) => fieldId !== id)
+      : [...listing.searchFields, id];
+    if (searchFields.length === 0) return;
     patch({
-      searchFields: exists
-        ? listing.searchFields.filter((f) => f !== id)
-        : [...listing.searchFields, id],
+      searchFields,
+      searchPlaceholder: searchPlaceholderFor(config, searchFields),
+    });
+  };
+
+  const togglePrimary = (id: FilterKey) => {
+    const exists = listing.primaryFilters.includes(id);
+    if (exists) {
+      patch({
+        primaryFilters: listing.primaryFilters.filter((key) => key !== id),
+      });
+      return;
+    }
+    if (listing.primaryFilters.length >= MAX_PRIMARY_FILTERS) return;
+    patch({
+      primaryFilters: [...listing.primaryFilters, id],
+      extraFilters: listing.extraFilters.filter((key) => key !== id),
+    });
+  };
+
+  const toggleExtra = (id: FilterKey) => {
+    if (listing.primaryFilters.includes(id)) return;
+    const exists = listing.extraFilters.includes(id);
+    patch({
+      extraFilters: exists
+        ? listing.extraFilters.filter((key) => key !== id)
+        : [...listing.extraFilters, id],
     });
   };
 
   return (
     <>
       <Section
-        title="Search"
-        help="ควบคุมว่าผู้เยี่ยมชมค้นหาเนื้อหาบนหน้า Listing ได้อย่างไร"
+        title="บาร์หลัก"
+        help="แถวค้นหาบนหน้ารายการเต็ม ถ้าจะฝังบาร์บนหน้าแรกค่อยเปิดด้านล่าง"
       >
         <SwitchRow
           label="แสดงช่องค้นหา"
-          impact="มีช่องค้นหาใต้หัวข้อหน้า"
+          impact="มีช่องพิมพ์ในแถวเดียวกับตัวกรองหลัก"
           on={listing.showSearch}
           onToggle={() => patch({ showSearch: !listing.showSearch })}
         />
@@ -61,8 +221,12 @@ export function ListingSettings({
             onChange={(e) => patch({ searchPlaceholder: e.target.value })}
             disabled={!listing.showSearch}
           />
+          <p className="help">อัปเดตอัตโนมัติเมื่อเลือกช่องค้นหา สามารถแก้ข้อความเองได้</p>
         </Field>
-        <Field label="ค้นหาจาก Field">
+        <Field label="ค้นหาจากช่องข้อความ">
+          <p className="help" style={{ marginTop: 0 }}>
+            ผู้เข้าชมพิมพ์ในช่องค้นหา แล้วไปเจอช่องที่เปิดไว้
+          </p>
           <div className="checklist">
             {config.searchFields.map((field) => (
               <label className="check" key={field.id}>
@@ -78,7 +242,7 @@ export function ListingSettings({
           </div>
           <div className="chip-row">
             {listing.searchFields.map((id) => {
-              const field = config.searchFields.find((f) => f.id === id);
+              const field = config.searchFields.find((item) => item.id === id);
               return (
                 <span className="chip on" key={id}>
                   {field?.label ?? id}
@@ -87,18 +251,101 @@ export function ListingSettings({
             })}
           </div>
         </Field>
+        <Field label={`ตัวกรองบนบาร์ (สูงสุด ${MAX_PRIMARY_FILTERS})`}>
+          <p className="help" style={{ marginTop: 0 }}>
+            โชว์เป็นเมนูเลือกบนหน้าแรกและแถวหลักของหน้าเต็ม เรียงตามที่ติ๊ก
+          </p>
+          <div className="checklist">
+            {filters.map((filter) => {
+              const checked = listing.primaryFilters.includes(filter.id);
+              const full =
+                !checked && listing.primaryFilters.length >= MAX_PRIMARY_FILTERS;
+              return (
+                <label className="check" key={filter.id}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={full}
+                    onChange={() => togglePrimary(filter.id)}
+                  />
+                  {filter.label}
+                </label>
+              );
+            })}
+          </div>
+          <div className="chip-row">
+            {listing.primaryFilters.map((id) => {
+              const filter = filters.find((item) => item.id === id);
+              return (
+                <span className="chip on" key={id}>
+                  {filter?.label ?? id}
+                </span>
+              );
+            })}
+          </div>
+        </Field>
+        <Field label="ข้อความปุ่ม">
+          <input
+            value={listing.barButtonLabel}
+            onChange={(e) => patch({ barButtonLabel: e.target.value })}
+          />
+          <p className="help">เช่น ค้นหา หรือ ค้นหาตำแหน่งงาน</p>
+        </Field>
+        <Field label="สไตล์บาร์หน้าเต็ม">
+          <p className="help" style={{ marginTop: 0 }}>
+            แถวหลักบนหน้ารายการ
+          </p>
+          <BarStylePicker
+            value={listing.listingBarStyle}
+            onChange={(listingBarStyle) => patch({ listingBarStyle })}
+          />
+        </Field>
+        <SwitchRow
+          label="ฝังบาร์บนหน้าแรก"
+          impact="มีวิดเจ็ตค้นหาบนหน้าแรก กดแล้วมาหน้ารายการนี้ — ไม่ต้องเปิดถ้าใช้แค่หน้า Listing"
+          on={listing.enableHomeBar}
+          onToggle={() => patch({ enableHomeBar: !listing.enableHomeBar })}
+        />
+        {listing.enableHomeBar ? (
+          <Field label="สไตล์บาร์หน้าแรก">
+            <p className="help" style={{ marginTop: 0 }}>
+              ใช้ตอนฝังบนฮีโร่หน้าแรก เลือกคนละแบบกับหน้าเต็มได้
+            </p>
+            <BarStylePicker
+              value={listing.homeBarStyle}
+              onChange={(homeBarStyle) => patch({ homeBarStyle })}
+            />
+          </Field>
+        ) : null}
       </Section>
 
       <Section
-        title="Filter, Sort & Layout"
-        help="กำหนดแถบตัวกรอง จำนวนคอลัมน์ และการแบ่งหน้า"
+        title="ตัวกรองเพิ่มเติมบนหน้าเต็ม"
+        help="มีเฉพาะหน้า Listing เต็ม หลังปุ่ม “ตัวกรองเพิ่มเติม” ไม่โชว์บนบาร์หน้าแรกถ้าเปิดฝังไว้"
       >
-        <SwitchRow
-          label="แสดง Filter"
-          impact="มีเมนูกรองหมวด/สถานที่/เรียงลำดับ"
-          on={listing.showFilters}
-          onToggle={() => patch({ showFilters: !listing.showFilters })}
-        />
+        <div className="checklist">
+          {filters.map((filter) => {
+            const onPrimary = listing.primaryFilters.includes(filter.id);
+            return (
+              <label className="check" key={filter.id}>
+                <input
+                  type="checkbox"
+                  checked={listing.extraFilters.includes(filter.id)}
+                  disabled={onPrimary}
+                  onChange={() => toggleExtra(filter.id)}
+                />
+                {filter.label}
+                {onPrimary ? " · อยู่บนบาร์หลักแล้ว" : ""}
+              </label>
+            );
+          })}
+        </div>
+      </Section>
+
+      <Section
+        title="เลย์เอาต์หน้ารายการ"
+        help="ใช้เฉพาะหน้า Listing เต็ม บาร์หน้าแรกถ้าเปิดจะฝังได้แค่แถวค้นหา ไม่ดึงการ์ด"
+      >
         <SwitchRow
           label="แสดงจำนวนผลลัพธ์"
           impact={`เช่น “${config.resultLabel(6)}”`}
@@ -117,6 +364,38 @@ export function ListingSettings({
             <option value={1}>1 Column — รายการยาว / มือถือ</option>
           </select>
         </Field>
+        <SwitchRow
+          label="ให้สลับ Grid / List บนเดสก์ท็อป"
+          impact="มีปุ่มตารางและรายการบนหน้ารายการ ผู้เข้าชมเลือกเองได้ มือถือยังเป็นแถวเดียว"
+          on={listing.allowViewToggle}
+          onToggle={() =>
+            patch({ allowViewToggle: !listing.allowViewToggle })
+          }
+        />
+        {listing.allowViewToggle ? (
+          <Field label="มุมมองเริ่มต้น">
+            <div className="icon-mode-toggle">
+              {(
+                [
+                  ["grid", "ตาราง"],
+                  ["list", "รายการ"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={
+                    (listing.defaultView ?? "grid") === value ? "active" : ""
+                  }
+                  onClick={() => patch({ defaultView: value as ListingView })}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="help">Grid ใช้จำนวนคอลัมน์ที่ตั้งไว้ List เป็นแถวเดียว รูปซ้ายข้อความขวา</p>
+          </Field>
+        ) : null}
         <Field label="Pagination">
           <select
             value={listing.pagination}
@@ -131,6 +410,28 @@ export function ListingSettings({
             <option value="none">ไม่แสดง — โชว์รายการทั้งหมด</option>
           </select>
         </Field>
+      </Section>
+
+      <Section
+        title="บนมือถือ"
+        help="เดสก์ท็อปยังใช้ค่าเดิม สลับพรีวิวเป็น Mobile เพื่อดูของที่ซ่อน คอลัมน์บนมือถือเป็น 1 ตลอด"
+      >
+        <MobileHideChecks
+          mobile={settings.mobile}
+          onChange={(mobile) => onChange({ ...settings, mobile })}
+          items={[
+            {
+              key: "hideHomeBar",
+              label: "ซ่อนบาร์หน้าแรก",
+              available: listing.enableHomeBar,
+            },
+            {
+              key: "hideExtraFilters",
+              label: "ซ่อนตัวกรองเพิ่มเติม",
+              available: listing.extraFilters.length > 0,
+            },
+          ]}
+        />
       </Section>
     </>
   );
@@ -160,7 +461,7 @@ export function CardSettings({
     <>
       <Section
         title="Card Layout"
-        help="รูปแบบการ์ดเดียวกันใช้ได้กับ Job, Blog, News, Product และ Download โดยเปิด-ปิด Field ตามประเภทเนื้อหา"
+        help="รูปแบบการ์ดเดียวกันใช้ได้กับ Job, บทความ, Product และ Download โดยเปิด-ปิด Field ตามประเภทเนื้อหา"
       >
         <div className="seg">
           {(
@@ -183,7 +484,7 @@ export function CardSettings({
         </div>
         <p className="help" style={{ marginTop: 10 }}>
           {card.layout === "top" &&
-            "รูปอยู่ด้านบน ข้อความด้านล่าง — เหมาะกับ Blog / News / Product"}
+            "รูปอยู่ด้านบน ข้อความด้านล่าง — เหมาะกับบทความและสินค้า"}
           {card.layout === "horizontal" &&
             "รูปซ้าย ข้อความขวา — เหมาะกับ Job listing ที่เน้นอ่านเร็ว"}
           {card.layout === "none" &&
@@ -256,6 +557,34 @@ export function CardSettings({
           on={card.showPrice}
           onToggle={() => patch({ showPrice: !card.showPrice })}
         />
+        {card.showCategory || card.showLocation || card.showPrice ? (
+          <>
+            {card.showCategory ? (
+              <Field label={`ไอคอน${config.categoryLabel.split(" / ")[0]}`}>
+                <IconSourcePicker
+                  value={card.categoryIcon}
+                  onChange={(categoryIcon) => patch({ categoryIcon })}
+                />
+              </Field>
+            ) : null}
+            {card.showLocation ? (
+              <Field label={`ไอคอน${config.locationLabel.split(" / ")[0]}`}>
+                <IconSourcePicker
+                  value={card.locationIcon}
+                  onChange={(locationIcon) => patch({ locationIcon })}
+                />
+              </Field>
+            ) : null}
+            {card.showPrice ? (
+              <Field label={`ไอคอน${config.priceLabel.split(" / ")[0]}`}>
+                <IconSourcePicker
+                  value={card.priceIcon}
+                  onChange={(priceIcon) => patch({ priceIcon })}
+                />
+              </Field>
+            ) : null}
+          </>
+        ) : null}
         <SwitchRow
           label={config.statusLabel}
           impact="แสดงป้ายสถานะ เช่น เปิดรับสมัคร / Featured"
@@ -263,27 +592,65 @@ export function CardSettings({
           onToggle={() => patch({ showStatus: !card.showStatus })}
         />
         <SwitchRow
-          label="CTA / Read More"
-          impact={`ปุ่ม “${card.ctaLabel || config.ctaLabel}” ไปหน้ารายละเอียด`}
+          label="ดูรายละเอียด"
+          impact="มีจุดกดไปหน้ารายละเอียดบนการ์ด การ์ดทั้งใบกดได้อยู่แล้ว"
           on={card.showCta}
           onToggle={() => patch({ showCta: !card.showCta })}
         />
-        <Field label="ข้อความปุ่ม CTA">
-          <input
-            value={card.ctaLabel}
-            onChange={(e) => patch({ ctaLabel: e.target.value })}
-            disabled={!card.showCta}
-          />
-        </Field>
+        {card.showCta ? (
+          <>
+            <Field label="รูปแบบ">
+              <div className="seg">
+                {(
+                  [
+                    ["link", "ลิงก์", "ข้อความสีธีม ไม่มีกรอบ"],
+                    ["button", "ปุ่ม", "ปุ่มทึบพร้อมข้อความ"],
+                    ["icon", "ไอคอน", "ไอคอนอย่างเดียว ไม่มีข้อความ"],
+                  ] as const
+                ).map(([value, label, hint]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={`seg-btn${(card.ctaStyle ?? "link") === value ? " active" : ""}`}
+                    onClick={() => patch({ ctaStyle: value as CtaStyle })}
+                  >
+                    <span>{label}</span>
+                    <small>{hint}</small>
+                  </button>
+                ))}
+              </div>
+            </Field>
+            {card.ctaStyle !== "icon" ? (
+              <Field label="ข้อความ">
+                <input
+                  value={card.ctaLabel}
+                  onChange={(e) => patch({ ctaLabel: e.target.value })}
+                />
+              </Field>
+            ) : (
+              <p className="help">โชว์เฉพาะไอคอน ไม่มีข้อความ เช่น ปุ่มดาวน์โหลดบนการ์ดไฟล์</p>
+            )}
+            <Field label="ไอคอนปุ่ม">
+              <IconSourcePicker
+                value={card.ctaIcon}
+                onChange={(ctaIcon) => patch({ ctaIcon })}
+              />
+              <p className="help">
+                ค่าเริ่มต้นของการ์ดดาวน์โหลดเป็นไอคอนดาวน์โหลดหน้าข้อความ ถ้าอัปโหลดเองจะอยู่หลังคำ
+              </p>
+            </Field>
+          </>
+        ) : null}
       </Section>
 
-      <Section
-        title="Field Mapping"
-        help="แมป Meta Field ให้ตรงกับข้อมูลจริงของ Content Type นี้ — ป้ายกำกับจะโชว์ใน Preview"
-      >
+      <details className="advanced-fold">
+        <summary>ตั้งค่าขั้นสูง — แมปชื่อฟิลด์บนการ์ด</summary>
+        <p className="help">
+          ส่วนนี้สำหรับกรณีที่ป้ายบนการ์ดต้องชี้ไปข้อมูลคนละช่อง เช่น แสดงวันที่แทนราคา
+        </p>
         <div className="subcard">
-          <div className="mini-title">Meta Field #1</div>
-          <Field label="Source">
+          <div className="mini-title">เมื่อเปิด {config.priceLabel}</div>
+          <Field label="ดึงค่าจาก">
             <select
               value={card.meta1.source}
               onChange={(e) =>
@@ -302,7 +669,7 @@ export function CardSettings({
               ))}
             </select>
           </Field>
-          <Field label="Label">
+          <Field label="ป้ายที่แสดง">
             <input
               value={card.meta1.label}
               onChange={(e) =>
@@ -312,8 +679,8 @@ export function CardSettings({
           </Field>
         </div>
         <div className="subcard">
-          <div className="mini-title">Meta Field #2</div>
-          <Field label="Source">
+          <div className="mini-title">เมื่อเปิด {config.categoryLabel}</div>
+          <Field label="ดึงค่าจาก">
             <select
               value={card.meta2.source}
               onChange={(e) =>
@@ -332,7 +699,7 @@ export function CardSettings({
               ))}
             </select>
           </Field>
-          <Field label="Label">
+          <Field label="ป้ายที่แสดง">
             <input
               value={card.meta2.label}
               onChange={(e) =>
@@ -341,6 +708,53 @@ export function CardSettings({
             />
           </Field>
         </div>
+      </details>
+
+      <Section
+        title="บนมือถือ"
+        help="ซ่อนเฉพาะบนมือถือ ของที่ปิดอยู่บนเดสก์ท็อปอยู่แล้วจะไม่โชว์ที่นี่ สลับพรีวิวเป็น Mobile เพื่อดูผล"
+      >
+        <MobileHideChecks
+          mobile={settings.mobile}
+          onChange={(mobile) => onChange({ ...settings, mobile })}
+          items={[
+            {
+              key: "hideThumbnail",
+              label: "ซ่อนรูป",
+              available: card.showThumbnail && card.layout !== "none",
+            },
+            {
+              key: "hideDescription",
+              label: "ซ่อนคำอธิบาย",
+              available: card.showDescription,
+            },
+            {
+              key: "hideCategory",
+              label: `ซ่อน${config.categoryLabel.split(" / ")[0]}`,
+              available: card.showCategory,
+            },
+            {
+              key: "hideLocation",
+              label: `ซ่อน${config.locationLabel.split(" / ")[0]}`,
+              available: card.showLocation,
+            },
+            {
+              key: "hidePrice",
+              label: `ซ่อน${config.priceLabel.split(" / ")[0]}`,
+              available: card.showPrice,
+            },
+            {
+              key: "hideStatus",
+              label: "ซ่อนสถานะ",
+              available: card.showStatus,
+            },
+            {
+              key: "hideCta",
+              label: "ซ่อนปุ่มดูรายละเอียด",
+              available: card.showCta,
+            },
+          ]}
+        />
       </Section>
     </>
   );
@@ -366,8 +780,8 @@ export function DetailSettings({
 
   return (
     <Section
-      title="Detail Page"
-      help="เมื่อผู้ใช้คลิกการ์ด จะเห็นหน้า Detail ตามสวิตช์ด้านล่าง — สลับ Preview เป็นโหมด Detail เพื่อตรวจผล"
+      title="หน้ารายละเอียด"
+      help="เมื่อผู้เข้าชมคลิกการ์ด จะเห็นหน้านี้ตามสวิตช์ด้านล่าง"
     >
       <SwitchRow
         label={`แสดง ${CONTENT_TYPES[type].priceLabel.split(" / ")[0]}`}
