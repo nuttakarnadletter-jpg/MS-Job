@@ -10,6 +10,7 @@ export type PreviewMode = "listing" | "detail";
 export type FilterKey = "category" | "location" | "priceRange" | "status";
 export type BarStyle = "dark" | "card" | "ghost";
 export type CtaStyle = "link" | "button" | "icon";
+export type DetailCtaPosition = "bottom" | "topRight";
 export type ClickAction = "detail" | "external" | "file";
 export type MetaIconMode = "default" | "none" | "upload";
 
@@ -143,6 +144,7 @@ export interface DisplaySettings {
     showBenefits: boolean;
     showBody: boolean;
     primaryAction: string;
+    ctaPosition: DetailCtaPosition;
   };
   seo: {
     pageTitle: string;

@@ -9,6 +9,7 @@ import type {
   CardLayout,
   ContentTypeConfig,
   CtaStyle,
+  DetailCtaPosition,
   DisplaySettings,
   FilterKey,
   ListingView,
@@ -861,6 +862,34 @@ export function DetailSettings({
           ))}
         </select>
       </Field>
+      {showJobBlocks ? (
+        <Field label="ตำแหน่งปุ่ม">
+          <div className="icon-mode-toggle">
+            {(
+              [
+                ["bottom", "ด้านล่าง"],
+                ["topRight", "ด้านบนขวา"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className={
+                  (detail.ctaPosition ?? "bottom") === value ? "active" : ""
+                }
+                onClick={() =>
+                  patch({ ctaPosition: value as DetailCtaPosition })
+                }
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="help">
+            ด้านบนขวาอยู่แถวเดียวกับหัวข้อและแท็ก ปุ่มชิดขวาแบบหน้ารายละเอียดงาน
+          </p>
+        </Field>
+      ) : null}
     </Section>
   );
 }

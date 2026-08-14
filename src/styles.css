@@ -2168,6 +2168,57 @@ button {
   font-weight: 700;
   display: inline-flex;
   text-decoration: none;
+  white-space: nowrap;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.detail-header-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.detail-header-copy h1 {
+  margin: 0;
+}
+
+.detail-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 8px;
+}
+
+.detail-title-row .badge,
+.detail-meta .badge {
+  margin-top: 0;
+  padding: 3px 8px;
+  vertical-align: middle;
+}
+
+.detail-header .detail-meta {
+  margin-bottom: 0;
+  align-items: center;
+}
+
+.detail-header .detail-cta {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.detail-header-rule {
+  border: 0;
+  border-top: 1px solid #e6ebf2;
+  margin: 20px 0 22px;
 }
 
 .detail-page h1 {
@@ -2179,6 +2230,7 @@ button {
 .detail-meta {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 10px 16px;
   font-size: 13px;
   color: #5e6c84;
@@ -2420,6 +2472,15 @@ button {
 .browser.mobile .content,
 .browser.mobile .detail-page {
   padding: 18px;
+}
+
+.browser.mobile .detail-header {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.browser.mobile .detail-header .detail-cta {
+  width: 100%;
 }
 
 .browser.mobile .cards {

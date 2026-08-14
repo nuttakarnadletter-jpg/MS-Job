@@ -46,7 +46,7 @@ export const CONTENT_TYPES: Record<ContentTypeId, ContentTypeConfig> = {
       { id: "qualifications", label: "แสดง Qualifications", impact: "แสดงคุณสมบัติที่ต้องการ" },
       { id: "benefits", label: "แสดง Benefits", impact: "แสดงสวัสดิการ" },
     ],
-    primaryActions: ["Apply Now", "Contact Us", "Download", "Read More"],
+    primaryActions: ["Apply Now", "สมัครตำแหน่งนี้", "Contact Us", "Download", "Read More"],
     metaDefaults: [
       { source: "salary", label: "เงินเดือน" },
       { source: "department", label: "แผนก" },
@@ -589,6 +589,7 @@ export function createDefaultSettings(type: ContentTypeId = "job"): DisplaySetti
       showBenefits: type === "job" || type === "product",
       showBody: type !== "job",
       primaryAction: config.detailCta,
+      ctaPosition: "bottom",
     },
     seo: {
       pageTitle: `${config.pageName} | Readyplanet`,
@@ -671,6 +672,7 @@ export function applyContentType(
       showLocation: current.detail.showLocation,
       showCategory: current.detail.showCategory,
       showStatus: current.detail.showStatus,
+      ctaPosition: current.detail.ctaPosition ?? next.detail.ctaPosition,
     },
     seo: {
       ...next.seo,

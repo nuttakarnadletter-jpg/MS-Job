@@ -336,6 +336,34 @@ function ItemCard({
   );
 }
 
+function DetailCta({
+  item,
+  label,
+  className,
+}: {
+  item: ContentItem;
+  label: string;
+  className?: string;
+}) {
+  const classes = className ? `detail-cta ${className}` : "detail-cta";
+  if (item.fileUrl) {
+    return (
+      <a
+        className={classes}
+        href={item.fileUrl}
+        download={item.fileName || item.title}
+      >
+        {label}
+      </a>
+    );
+  }
+  return (
+    <button type="button" className={classes}>
+      {label}
+    </button>
+  );
+}
+
 function DetailView({
   item,
   settings,
@@ -353,6 +381,41 @@ function DetailView({
     card.showThumbnail && card.layout !== "none",
     card.emptyImage,
   );
+  const ctaLabel = detail.primaryAction || config.detailCta;
+  const ctaTopRight =
+    settings.contentType === "job" &&
+    (detail.ctaPosition ?? "bottom") === "topRight";
+  const statusBadge = detail.showStatus ? (
+    <span className="badge">{item.status}</span>
+  ) : null;
+  const hasMeta =
+    detail.showCategory ||
+    detail.showLocation ||
+    detail.showPrice ||
+    (!ctaTopRight && detail.showStatus);
+  const meta = hasMeta ? (
+    <div className="detail-meta">
+      {detail.showCategory ? (
+        <span>
+          <MetaGlyph setting={card.categoryIcon} fallback="▣" />
+          {item.category}
+        </span>
+      ) : null}
+      {detail.showLocation ? (
+        <span>
+          <MetaGlyph setting={card.locationIcon} fallback="⌖" />
+          {item.location}
+        </span>
+      ) : null}
+      {detail.showPrice ? (
+        <span>
+          <MetaGlyph setting={card.priceIcon} fallback="▱" />
+          {metaValue(item, card.meta1.source)}
+        </span>
+      ) : null}
+      {ctaTopRight ? null : statusBadge}
+    </div>
+  ) : null;
 
   return (
     <div className="detail-page">
@@ -364,28 +427,26 @@ function DetailView({
           {media.icon ?? null}
         </div>
       ) : null}
-      <h1>{item.title}</h1>
-      <div className="detail-meta">
-        {detail.showCategory ? (
-          <span>
-            <MetaGlyph setting={card.categoryIcon} fallback="▣" />
-            {item.category}
-          </span>
-        ) : null}
-        {detail.showLocation ? (
-          <span>
-            <MetaGlyph setting={card.locationIcon} fallback="⌖" />
-            {item.location}
-          </span>
-        ) : null}
-        {detail.showPrice ? (
-          <span>
-            <MetaGlyph setting={card.priceIcon} fallback="▱" />
-            {metaValue(item, card.meta1.source)}
-          </span>
-        ) : null}
-        {detail.showStatus ? <span className="badge">{item.status}</span> : null}
-      </div>
+      {ctaTopRight ? (
+        <>
+          <div className="detail-header">
+            <div className="detail-header-copy">
+              <div className="detail-title-row">
+                <h1>{item.title}</h1>
+                {statusBadge}
+              </div>
+              {meta}
+            </div>
+            <DetailCta item={item} label={ctaLabel} />
+          </div>
+          <hr className="detail-header-rule" />
+        </>
+      ) : (
+        <>
+          <h1>{item.title}</h1>
+          {meta}
+        </>
+      )}
       <p style={{ color: "#667085", fontSize: 14, lineHeight: 1.6, margin: 0 }}>
         {item.description}
       </p>
@@ -435,19 +496,7 @@ function DetailView({
         </div>
       ) : null}
 
-      {item.fileUrl ? (
-        <a
-          className="detail-cta"
-          href={item.fileUrl}
-          download={item.fileName || item.title}
-        >
-          {detail.primaryAction || config.detailCta}
-        </a>
-      ) : (
-        <button type="button" className="detail-cta">
-          {detail.primaryAction || config.detailCta}
-        </button>
-      )}
+      {ctaTopRight ? null : <DetailCta item={item} label={ctaLabel} />}
     </div>
   );
 }
