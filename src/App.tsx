@@ -395,12 +395,29 @@ export default function App() {
     );
   };
 
+  const syncSeoTitle = (heading: string) => {
+    setSettings((current) => ({
+      ...current,
+      seo: {
+        ...current.seo,
+        pageTitle: heading.trim()
+          ? `${heading} | Readyplanet`
+          : current.seo.pageTitle,
+      },
+    }));
+  };
+
+  const renameListing = (name: string) => {
+    patchActiveListing({ name, title: name });
+    syncSeoTitle(name);
+  };
+
   const addListing = () => {
     const stamp = nowStamp();
     const listing: SearchListing = {
       id: `sl-${Date.now()}`,
       name: "Search Listing ใหม่",
-      title: "หน้ารายการใหม่",
+      title: "Search Listing ใหม่",
       description: "",
       contentType: "job",
       createdAt: stamp,
@@ -1175,12 +1192,14 @@ export default function App() {
             children: (
               <Card>
                 <Form layout="vertical" style={{ maxWidth: 760 }}>
-                  <Form.Item label="Name" required>
+                  <Form.Item
+                    label="Name"
+                    required
+                    extra="ชื่อในระบบ และหัวข้อที่ผู้เข้าชมเห็นบนหน้ารายการ"
+                  >
                     <Input
                       value={activeJob.name}
-                      onChange={(event) =>
-                        patchActiveListing({ name: event.target.value })
-                      }
+                      onChange={(event) => renameListing(event.target.value)}
                     />
                   </Form.Item>
                   <Form.Item
@@ -1211,13 +1230,15 @@ export default function App() {
                     <Form.Item
                       label="Title"
                       required
-                      extra="หัวข้อนี้โชว์บนหน้ารายการใน Display"
+                      extra="แก้แล้วหัวข้อบนหน้ารายการเปลี่ยนตาม ถ้าต้องการชื่อคนละแบบจาก Name ให้แก้ช่องนี้"
                     >
                       <Input
                         value={activeJob.title}
-                        onChange={(event) =>
-                          patchActiveListing({ title: event.target.value })
-                        }
+                        onChange={(event) => {
+                          const title = event.target.value;
+                          patchActiveListing({ title });
+                          syncSeoTitle(title);
+                        }}
                       />
                     </Form.Item>
                     <Form.Item
