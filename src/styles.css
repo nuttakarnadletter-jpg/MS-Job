@@ -1954,6 +1954,10 @@ button {
   grid-template-columns: 150px 1fr;
 }
 
+.cards.horizontal .item-card.no-media {
+  grid-template-columns: 1fr;
+}
+
 .thumb {
   height: 145px;
   display: flex;
@@ -2066,6 +2070,7 @@ button {
 }
 
 .pagination span,
+.pagination button,
 .pagination .load-more {
   min-width: 32px;
   height: 32px;
@@ -2075,9 +2080,18 @@ button {
   place-items: center;
   font-size: 12px;
   background: #fff;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
 }
 
-.pagination span.active {
+.pagination button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.pagination span.active,
+.pagination button.active {
   background: var(--blue);
   color: #fff;
   border-color: var(--blue);
@@ -2773,7 +2787,8 @@ button {
 
 .front-search button,
 .detail-cta,
-.pagination span.active {
+.pagination span.active,
+.pagination button.active {
   background: var(--blue);
   border-color: var(--blue);
 }

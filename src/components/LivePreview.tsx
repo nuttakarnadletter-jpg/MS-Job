@@ -14,6 +14,7 @@ import type {
   ContentTypeId,
   DevicePreview,
   DisplaySettings,
+  EmptyImageBehavior,
   FilterKey,
   ListingView,
   MetaIconSetting,
@@ -21,6 +22,8 @@ import type {
   MobileSettings,
   PreviewMode,
 } from "../types";
+
+const PAGE_SIZE = 3;
 
 const DEFAULT_MOBILE: MobileSettings = {
   hideHomeBar: false,
@@ -179,6 +182,38 @@ function mediaStyle(item: ContentItem) {
   return { background: item.imageColor };
 }
 
+const DEFAULT_COVER =
+  "data:image/svg+xml," +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500">
+      <rect width="800" height="500" fill="#EEF2F6"/>
+      <rect x="340" y="208" width="120" height="84" rx="10" fill="none" stroke="#CBD5E1" stroke-width="6"/>
+      <circle cx="376" cy="238" r="10" fill="#CBD5E1"/>
+      <path d="M356 276l22-20 16 14 20-26 30 32H356z" fill="#CBD5E1"/>
+    </svg>`,
+  );
+
+function resolveMedia(
+  item: ContentItem,
+  showSlot: boolean,
+  emptyImage: EmptyImageBehavior | undefined,
+): { style: { background?: string; backgroundImage?: string; backgroundSize?: string; backgroundPosition?: string }; icon?: string } | null {
+  if (!showSlot) return null;
+  if (item.coverImage) return { style: mediaStyle(item) };
+  const empty = emptyImage ?? "placeholder";
+  if (empty === "hide") return null;
+  if (empty === "default") {
+    return {
+      style: {
+        backgroundImage: `url("${DEFAULT_COVER}")`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      },
+    };
+  }
+  return { style: { background: item.imageColor }, icon: item.icon };
+}
+
 function ItemCard({
   item,
   settings,
@@ -194,10 +229,14 @@ function ItemCard({
 }) {
   const { card } = settings;
   const mobile = settings.mobile ?? DEFAULT_MOBILE;
-  const showMedia = shownOn(
-    card.showThumbnail && card.layout !== "none",
-    mobile.hideThumbnail,
-    isMobile,
+  const media = resolveMedia(
+    item,
+    shownOn(
+      card.showThumbnail && card.layout !== "none",
+      mobile.hideThumbnail,
+      isMobile,
+    ),
+    card.emptyImage,
   );
   const showCategory = shownOn(card.showCategory, mobile.hideCategory, isMobile);
   const showLocation = shownOn(card.showLocation, mobile.hideLocation, isMobile);
@@ -225,7 +264,7 @@ function ItemCard({
 
   return (
     <article
-      className="item-card"
+      className={`item-card${media ? "" : " no-media"}`}
       onClick={onOpen}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -236,9 +275,9 @@ function ItemCard({
       role="button"
       tabIndex={0}
     >
-      {showMedia ? (
-        <div className="thumb" style={mediaStyle(item)}>
-          {item.coverImage ? null : item.icon}
+      {media ? (
+        <div className="thumb" style={media.style}>
+          {media.icon ?? null}
         </div>
       ) : null}
       <div className="card-body">
@@ -309,19 +348,20 @@ function DetailView({
   onBack: () => void;
 }) {
   const { detail, card } = settings;
-  const showMedia = card.showThumbnail && card.layout !== "none";
+  const media = resolveMedia(
+    item,
+    card.showThumbnail && card.layout !== "none",
+    card.emptyImage,
+  );
 
   return (
     <div className="detail-page">
       <button type="button" className="detail-back" onClick={onBack}>
         ← กลับไปหน้า Listing
       </button>
-      {showMedia ? (
-        <div
-          className="detail-hero-media"
-          style={mediaStyle(item)}
-        >
-          {item.coverImage ? null : item.icon}
+      {media ? (
+        <div className="detail-hero-media" style={media.style}>
+          {media.icon ?? null}
         </div>
       ) : null}
       <h1>{item.title}</h1>
@@ -655,6 +695,7 @@ export function LivePreview({
   const [visitorView, setVisitorView] = useState<ListingView>(
     listing.defaultView ?? "grid",
   );
+  const [page, setPage] = useState(1);
   const [values, setValues] = useState<FilterValues>({
     query: "",
     category: "",
@@ -677,6 +718,7 @@ export function LivePreview({
     setExtraOpen(false);
     setOutboundUrl(null);
     setDownloadItem(null);
+    setPage(1);
   }, [settings.contentType]);
 
   useEffect(() => {
@@ -757,6 +799,33 @@ export function LivePreview({
       priceRange,
     ],
   );
+  const totalPages = Math.max(1, Math.ceil(visibleItems.length / PAGE_SIZE));
+  const pagedItems =
+    listing.pagination === "none"
+      ? visibleItems
+      : listing.pagination === "loadmore"
+        ? visibleItems.slice(0, page * PAGE_SIZE)
+        : visibleItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const hasMore =
+    listing.pagination === "loadmore" && pagedItems.length < visibleItems.length;
+
+  useEffect(() => {
+    setPage(1);
+  }, [
+    values.query,
+    values.category,
+    values.location,
+    values.priceRangeId,
+    values.status,
+    listing.pagination,
+  ]);
+
+  useEffect(() => {
+    if (listing.pagination === "pagination") {
+      setPage((current) => Math.min(current, totalPages));
+    }
+  }, [listing.pagination, totalPages]);
+
   const searchHint = searchHintFor(config, listing.searchFields);
   const extraFilters = availableFilters(config).filter((filter) =>
     listing.extraFilters.includes(filter.id),
@@ -1043,7 +1112,7 @@ export function LivePreview({
                   <div
                     className={`cards ${colsClass}${useHorizontal ? " horizontal" : ""}`}
                   >
-                    {visibleItems.map((item) => (
+                    {pagedItems.map((item) => (
                       <ItemCard
                         key={item.id}
                         item={item}
@@ -1060,18 +1129,47 @@ export function LivePreview({
                   </div>
                 )}
 
-                {listing.pagination === "pagination" ? (
+                {listing.pagination === "pagination" &&
+                visibleItems.length > 0 &&
+                totalPages > 1 ? (
                   <div className="pagination">
-                    <span>‹</span>
-                    <span className="active">1</span>
-                    <span>2</span>
-                    <span>3</span>
-                    <span>›</span>
+                    <button
+                      type="button"
+                      disabled={page <= 1}
+                      onClick={() => setPage((current) => Math.max(1, current - 1))}
+                    >
+                      ‹
+                    </button>
+                    {Array.from({ length: totalPages }, (_, index) => index + 1).map(
+                      (number) => (
+                        <button
+                          key={number}
+                          type="button"
+                          className={number === page ? "active" : ""}
+                          onClick={() => setPage(number)}
+                        >
+                          {number}
+                        </button>
+                      ),
+                    )}
+                    <button
+                      type="button"
+                      disabled={page >= totalPages}
+                      onClick={() =>
+                        setPage((current) => Math.min(totalPages, current + 1))
+                      }
+                    >
+                      ›
+                    </button>
                   </div>
                 ) : null}
-                {listing.pagination === "loadmore" ? (
+                {hasMore ? (
                   <div className="pagination">
-                    <button type="button" className="load-more">
+                    <button
+                      type="button"
+                      className="load-more"
+                      onClick={() => setPage((current) => current + 1)}
+                    >
                       โหลดเพิ่มเติม
                     </button>
                   </div>

@@ -409,6 +409,7 @@ export function ListingSettings({
             <option value="loadmore">Load more — ปุ่มโหลดเพิ่ม</option>
             <option value="none">ไม่แสดง — โชว์รายการทั้งหมด</option>
           </select>
+          <p className="help">ตัวอย่างแบ่งหน้าละ 3 รายการ เลือกแล้วพรีวิวจะตัดรายการตามนั้น</p>
         </Field>
       </Section>
 
@@ -520,6 +521,7 @@ export function CardSettings({
             <option value="hide">ซ่อนพื้นที่รูป</option>
             <option value="default">ใช้ Default Image</option>
           </select>
+          <p className="help">ใช้เมื่อรายการนั้นยังไม่มี Cover</p>
         </Field>
       </Section>
 

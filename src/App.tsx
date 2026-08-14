@@ -10,7 +10,6 @@ import {
   FireOutlined,
   GiftOutlined,
   GlobalOutlined,
-  HolderOutlined,
   InboxOutlined,
   LayoutOutlined,
   MenuFoldOutlined,
@@ -53,6 +52,20 @@ import {
 } from "antd";
 import type { MenuProps, TableColumnsType } from "antd";
 import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import {
+  SortableContext,
+  arrayMove,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import {
   CardSettings,
   DetailSettings,
   ListingSettings,
@@ -60,6 +73,7 @@ import {
 } from "./components/SettingsPanels";
 import { LivePreview } from "./components/LivePreview";
 import { BodyEditor } from "./components/BodyEditor";
+import { DragHandle, SortableItemRow } from "./components/SortableItemRow";
 import {
   CONTENT_TYPES,
   SAMPLE_ITEMS,
@@ -195,12 +209,72 @@ const IMPACT_COPY: Record<SettingsTab, { title: string; body: string }> = {
 type Screen = "list" | "edit";
 type EditTab = "general" | "items" | "display";
 
-function formText(editing: boolean, value?: string) {
-  return editing ? (value ?? "") : "";
+function parseLines(value: string) {
+  const lines = value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return lines.length > 0 ? lines : undefined;
 }
 
-function formLines(editing: boolean, values?: string[]) {
-  return editing ? (values?.join("\n") ?? "") : "";
+function nowStamp() {
+  const date = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+type ItemDraft = {
+  title: string;
+  status: string;
+  category: string;
+  location: string;
+  priceLabel: string;
+  description: string;
+  publishedAt: string;
+  sku: string;
+  responsibilities: string;
+  qualifications: string;
+  benefits: string;
+};
+
+const EMPTY_ITEM_DRAFT: ItemDraft = {
+  title: "",
+  status: "",
+  category: "",
+  location: "",
+  priceLabel: "",
+  description: "",
+  publishedAt: "",
+  sku: "",
+  responsibilities: "",
+  qualifications: "",
+  benefits: "",
+};
+
+function draftFromItem(item?: ContentItem): ItemDraft {
+  if (!item) return { ...EMPTY_ITEM_DRAFT };
+  return {
+    title: item.title,
+    status: item.status,
+    category: item.category,
+    location: item.location,
+    priceLabel: item.priceLabel,
+    description: item.description,
+    publishedAt: item.publishedAt ?? "",
+    sku: item.sku ?? "",
+    responsibilities: (item.detailSections.responsibilities ?? []).join("\n"),
+    qualifications: (item.detailSections.qualifications ?? []).join("\n"),
+    benefits: (item.detailSections.benefits ?? []).join("\n"),
+  };
+}
+
+function initialItemsByListing(): Record<string, ContentItem[]> {
+  return Object.fromEntries(
+    SEARCH_LISTINGS.map((listing) => [
+      listing.id,
+      structuredClone(SAMPLE_ITEMS[listing.contentType]),
+    ]),
+  );
 }
 
 function normalizeUrl(value: string) {
@@ -246,16 +320,15 @@ export default function App() {
   const [fileName, setFileName] = useState("");
   const [fileUrl, setFileUrl] = useState("");
   const [fileSize, setFileSize] = useState("");
+  const [itemDraft, setItemDraft] = useState<ItemDraft>(EMPTY_ITEM_DRAFT);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [query, setQuery] = useState("");
-  const [itemsByType, setItemsByType] = useState<
-    Record<ContentTypeId, ContentItem[]>
-  >(() => structuredClone(SAMPLE_ITEMS));
+  const [itemsByListing, setItemsByListing] = useState<
+    Record<string, ContentItem[]>
+  >(initialItemsByListing);
 
   const config = CONTENT_TYPES[settings.contentType];
-  const items = itemsByType[settings.contentType];
-  const activeItem =
-    items.find((item) => item.id === activeItemId) ?? items[0];
+  const items = itemsByListing[activeJobId] ?? [];
   const activeJob =
     listings.find((job) => job.id === activeJobId) ?? listings[0];
   const impact = IMPACT_COPY[tab];
@@ -274,6 +347,24 @@ export default function App() {
       );
     });
   }, [query, listings]);
+
+  const itemSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+  );
+
+  const reorderItems = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    setItemsByListing((current) => {
+      const list = current[activeJobId] ?? [];
+      const from = list.findIndex((item) => item.id === active.id);
+      const to = list.findIndex((item) => item.id === over.id);
+      if (from < 0 || to < 0) return current;
+      return { ...current, [activeJobId]: arrayMove(list, from, to) };
+    });
+  };
+
+  const patchItemDraft = (partial: Partial<ItemDraft>) =>
+    setItemDraft((current) => ({ ...current, ...partial }));
 
   const switchContentType = (type: ContentTypeId) => {
     setSettings(createDefaultSettings(type));
@@ -297,9 +388,55 @@ export default function App() {
   const patchActiveListing = (partial: Partial<SearchListing>) => {
     setListings((current) =>
       current.map((listing) =>
-        listing.id === activeJobId ? { ...listing, ...partial } : listing,
+        listing.id === activeJobId
+          ? { ...listing, updatedAt: nowStamp(), ...partial }
+          : listing,
       ),
     );
+  };
+
+  const addListing = () => {
+    const stamp = nowStamp();
+    const listing: SearchListing = {
+      id: `sl-${Date.now()}`,
+      name: "Search Listing ใหม่",
+      title: "หน้ารายการใหม่",
+      description: "",
+      contentType: "job",
+      createdAt: stamp,
+      updatedAt: stamp,
+    };
+    setListings((current) => [listing, ...current]);
+    setItemsByListing((current) => ({ ...current, [listing.id]: [] }));
+    openEdit(listing);
+    message.success("สร้างแล้ว เพิ่มรายการได้ที่แท็บ Items");
+  };
+
+  const deleteListing = (id: string) => {
+    const next = listings.filter((listing) => listing.id !== id);
+    setListings(next);
+    setItemsByListing((current) => {
+      const { [id]: _removed, ...rest } = current;
+      return rest;
+    });
+    if (activeJobId === id) {
+      setActiveJobId(next[0]?.id ?? "");
+      setScreen("list");
+    }
+    message.success("ลบ Search Listing แล้ว");
+  };
+
+  const deleteItem = (id: string) => {
+    setItemsByListing((current) => ({
+      ...current,
+      [activeJobId]: (current[activeJobId] ?? []).filter((item) => item.id !== id),
+    }));
+    if (selectedId === id) setSelectedId(null);
+    if (activeItemId === id) {
+      setActiveItemId(null);
+      setItemModalOpen(false);
+    }
+    message.success("ลบรายการแล้ว");
   };
 
   const openItemModal = (id?: string) => {
@@ -320,10 +457,16 @@ export default function App() {
     setFileName(item?.fileName ?? "");
     setFileUrl(item?.fileUrl ?? "");
     setFileSize(item?.fileSize ?? "");
+    setItemDraft(draftFromItem(item));
     setItemModalOpen(true);
   };
 
   const saveItem = () => {
+    const title = itemDraft.title.trim();
+    if (!title) {
+      message.warning("ใส่ชื่อรายการก่อนบันทึก");
+      return;
+    }
     const url =
       clickAction === "external" ? normalizeUrl(externalUrl) : undefined;
     if (clickAction === "external" && !url) {
@@ -340,46 +483,62 @@ export default function App() {
       fileUrl: fileUrl || undefined,
       fileSize: fileSize || undefined,
     };
-    setItemsByType((current) => {
-      const list = current[type];
+    const detailSections =
+      type === "job"
+        ? {
+            responsibilities: parseLines(itemDraft.responsibilities),
+            qualifications: parseLines(itemDraft.qualifications),
+            benefits: parseLines(itemDraft.benefits),
+          }
+        : {
+            body: bodyHtml,
+            benefits:
+              type === "product" ? parseLines(itemDraft.benefits) : undefined,
+          };
+    const shared = {
+      title,
+      status: itemDraft.status.trim(),
+      category: itemDraft.category.trim(),
+      location: itemDraft.location.trim(),
+      description: itemDraft.description.trim(),
+      publishedAt: itemDraft.publishedAt.trim() || undefined,
+      sku: type === "product" ? itemDraft.sku.trim() || undefined : undefined,
+      clickAction,
+      externalUrl: url,
+      coverImage: coverImage || undefined,
+      ...fileFields,
+      priceLabel:
+        type === "download" && fileSize ? fileSize : itemDraft.priceLabel.trim(),
+      detailSections,
+    };
+    setItemsByListing((current) => {
+      const list = current[activeJobId] ?? [];
       if (activeItemId) {
         return {
           ...current,
-          [type]: list.map((item) =>
-            item.id === activeItemId
-              ? {
-                  ...item,
-                  clickAction,
-                  externalUrl: url,
-                  coverImage: coverImage || undefined,
-                  ...fileFields,
-                  priceLabel:
-                    type === "download" && fileSize
-                      ? fileSize
-                      : item.priceLabel,
-                  detailSections:
-                    type === "job"
-                      ? item.detailSections
-                      : { ...item.detailSections, body: bodyHtml },
-                }
-              : item,
+          [activeJobId]: list.map((item) =>
+            item.id === activeItemId ? { ...item, ...shared } : item,
           ),
         };
       }
       return {
         ...current,
-        [type]: [
-          createBlankItem(
-            clickAction,
-            url,
-            bodyHtml,
-            coverImage || undefined,
-            fileFields,
-          ),
+        [activeJobId]: [
+          {
+            ...createBlankItem(
+              clickAction,
+              url,
+              bodyHtml,
+              coverImage || undefined,
+              fileFields,
+            ),
+            ...shared,
+          },
           ...list,
         ],
       };
     });
+    patchActiveListing({ updatedAt: nowStamp() });
     setItemModalOpen(false);
     message.success(
       clickAction === "external"
@@ -427,11 +586,11 @@ export default function App() {
           />
           <Popconfirm
             title="ลบ Search Listing?"
-            description="รายการนี้จะถูกลบจากตัวอย่าง"
+            description="รายการนี้จะถูกลบ พร้อมรายการย่อยใน Listing นี้"
             okText="ลบ"
             cancelText="ยกเลิก"
             okButtonProps={{ danger: true }}
-            onConfirm={() => message.success("ตัวอย่าง: ลบรายการนี้")}
+            onConfirm={() => deleteListing(job.id)}
           >
             <Button
               type="text"
@@ -484,7 +643,7 @@ export default function App() {
       width: 120,
       render: (_, item) => (
         <Space size={4}>
-          <Button type="text" size="small" icon={<HolderOutlined />} aria-label="Reorder" />
+          <DragHandle />
           <Button
             type="text"
             size="small"
@@ -497,7 +656,7 @@ export default function App() {
             okText="ลบ"
             cancelText="ยกเลิก"
             okButtonProps={{ danger: true }}
-            onConfirm={() => message.success("ตัวอย่าง: ลบรายการนี้")}
+            onConfirm={() => deleteItem(item.id)}
           >
             <Button
               type="text"
@@ -631,8 +790,6 @@ export default function App() {
   );
 
   const renderItemForm = () => {
-    const editing = Boolean(activeItemId);
-    const current = editing ? activeItem : undefined;
     const type = settings.contentType;
     const showJobBlocks = type === "job";
     const showBody = type !== "job";
@@ -683,7 +840,11 @@ export default function App() {
         </Form.Item>
 
         <Form.Item label="Title" required>
-          <Input value={formText(editing, current?.title)} readOnly />
+          <Input
+            value={itemDraft.title}
+            placeholder="ชื่อที่โชว์บนการ์ด"
+            onChange={(event) => patchItemDraft({ title: event.target.value })}
+          />
         </Form.Item>
 
         <Form.Item
@@ -767,17 +928,31 @@ export default function App() {
         <Row gutter={16}>
           <Col span={12}>
             <Form.Item label="Status" required>
-              <Input value={formText(editing, current?.status)} readOnly />
+              <Input
+                value={itemDraft.status}
+                placeholder="เช่น เปิดรับสมัคร / Featured"
+                onChange={(event) => patchItemDraft({ status: event.target.value })}
+              />
             </Form.Item>
           </Col>
           <Col span={12}>
             <Form.Item label={config.categoryLabel}>
-              <Input value={formText(editing, current?.category)} readOnly />
+              <Input
+                value={itemDraft.category}
+                onChange={(event) =>
+                  patchItemDraft({ category: event.target.value })
+                }
+              />
             </Form.Item>
           </Col>
           <Col span={12}>
             <Form.Item label={config.locationLabel}>
-              <Input value={formText(editing, current?.location)} readOnly />
+              <Input
+                value={itemDraft.location}
+                onChange={(event) =>
+                  patchItemDraft({ location: event.target.value })
+                }
+              />
             </Form.Item>
           </Col>
           {showFile ? (
@@ -789,7 +964,12 @@ export default function App() {
           ) : (
             <Col span={12}>
               <Form.Item label={config.priceLabel}>
-                <Input value={formText(editing, current?.priceLabel)} readOnly />
+                <Input
+                  value={itemDraft.priceLabel}
+                  onChange={(event) =>
+                    patchItemDraft({ priceLabel: event.target.value })
+                  }
+                />
               </Form.Item>
             </Col>
           )}
@@ -797,8 +977,8 @@ export default function App() {
             <Col span={12}>
               <Form.Item label="SKU" extra="โชว์ได้เมื่อเลือก Source เป็น SKU ใน Display">
                 <Input
-                  value={formText(editing, current?.sku ?? current?.id.toUpperCase())}
-                  readOnly
+                  value={itemDraft.sku}
+                  onChange={(event) => patchItemDraft({ sku: event.target.value })}
                 />
               </Form.Item>
             </Col>
@@ -810,8 +990,11 @@ export default function App() {
                 extra="ช่องวันที่จริง ใช้เมื่อ Display เลือก Source เป็น Date"
               >
                 <Input
-                  value={formText(editing, current?.publishedAt ?? "2026-08-01 09:00")}
-                  readOnly
+                  value={itemDraft.publishedAt}
+                  placeholder="2026-08-01 09:00"
+                  onChange={(event) =>
+                    patchItemDraft({ publishedAt: event.target.value })
+                  }
                 />
               </Form.Item>
             </Col>
@@ -824,8 +1007,10 @@ export default function App() {
         >
           <Input.TextArea
             rows={3}
-            value={formText(editing, current?.description)}
-            readOnly
+            value={itemDraft.description}
+            onChange={(event) =>
+              patchItemDraft({ description: event.target.value })
+            }
           />
         </Form.Item>
 
@@ -843,15 +1028,19 @@ export default function App() {
             <Form.Item label="Responsibilities" extra="หนึ่งข้อต่อหนึ่งบรรทัด">
               <Input.TextArea
                 rows={4}
-                value={formLines(editing, current?.detailSections.responsibilities)}
-                readOnly
+                value={itemDraft.responsibilities}
+                onChange={(event) =>
+                  patchItemDraft({ responsibilities: event.target.value })
+                }
               />
             </Form.Item>
             <Form.Item label="Qualifications" extra="หนึ่งข้อต่อหนึ่งบรรทัด">
               <Input.TextArea
                 rows={4}
-                value={formLines(editing, current?.detailSections.qualifications)}
-                readOnly
+                value={itemDraft.qualifications}
+                onChange={(event) =>
+                  patchItemDraft({ qualifications: event.target.value })
+                }
               />
             </Form.Item>
           </>
@@ -861,8 +1050,10 @@ export default function App() {
           <Form.Item label="Benefits" extra="หนึ่งข้อต่อหนึ่งบรรทัด">
             <Input.TextArea
               rows={3}
-              value={formLines(editing, current?.detailSections.benefits)}
-              readOnly
+              value={itemDraft.benefits}
+              onChange={(event) =>
+                patchItemDraft({ benefits: event.target.value })
+              }
             />
           </Form.Item>
         ) : null}
@@ -910,7 +1101,7 @@ export default function App() {
           <Button
             type="primary"
             icon={<PlusOutlined />}
-            onClick={() => message.info("เตรียมเพิ่ม Search Listing ใหม่")}
+            onClick={addListing}
           >
             Add
           </Button>
@@ -985,7 +1176,12 @@ export default function App() {
               <Card>
                 <Form layout="vertical" style={{ maxWidth: 760 }}>
                   <Form.Item label="Name" required>
-                    <Input value={activeJob.name} readOnly />
+                    <Input
+                      value={activeJob.name}
+                      onChange={(event) =>
+                        patchActiveListing({ name: event.target.value })
+                      }
+                    />
                   </Form.Item>
                   <Form.Item
                     label="Content Type"
@@ -1047,19 +1243,37 @@ export default function App() {
             children: (
               <Card>
                 <Flex align="center" justify="space-between" wrap gap={12} style={{ marginBottom: 16 }}>
-                  <Typography.Title level={5} style={{ margin: 0 }}>
-                    Items
-                  </Typography.Title>
+                  <div>
+                    <Typography.Title level={5} style={{ margin: 0 }}>
+                      Items
+                    </Typography.Title>
+                    <Typography.Text type="secondary">
+                      ลากจุดจับเพื่อสลับตำแหน่ง ลำดับนี้คือลำดับบนหน้ารายการ
+                    </Typography.Text>
+                  </div>
                   <Button type="primary" icon={<PlusOutlined />} onClick={() => openItemModal()}>
                     Add Item
                   </Button>
                 </Flex>
-                <Table
-                  rowKey="id"
-                  columns={itemColumns}
-                  dataSource={items}
-                  pagination={false}
-                />
+                <DndContext
+                  sensors={itemSensors}
+                  collisionDetection={closestCenter}
+                  modifiers={[restrictToVerticalAxis]}
+                  onDragEnd={reorderItems}
+                >
+                  <SortableContext
+                    items={items.map((item) => item.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <Table
+                      rowKey="id"
+                      columns={itemColumns}
+                      dataSource={items}
+                      pagination={false}
+                      components={{ body: { row: SortableItemRow } }}
+                    />
+                  </SortableContext>
+                </DndContext>
               </Card>
             ),
           },
@@ -1157,7 +1371,7 @@ export default function App() {
         </Header>
 
         <Content className="cms-shell-content">
-          {screen === "list" ? renderListScreen() : renderEditScreen()}
+          {screen === "list" || !activeJob ? renderListScreen() : renderEditScreen()}
         </Content>
       </Layout>
     </Layout>

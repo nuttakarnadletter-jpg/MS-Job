@@ -144,6 +144,15 @@
   flex-shrink: 0;
 }
 
+.item-drag-handle {
+  cursor: grab;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.item-drag-handle:active {
+  cursor: grabbing;
+}
+
 @media (max-width: 768px) {
   .cms-shell-content {
     margin: 16px;
