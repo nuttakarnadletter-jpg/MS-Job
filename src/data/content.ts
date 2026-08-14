@@ -5,6 +5,30 @@ function article(...paragraphs: string[]) {
   return paragraphs.map((line) => `<p>${line}</p>`).join("");
 }
 
+function newsBody(intro: string, points: string[], extra?: string) {
+  return [
+    "<h2>สรุปประเด็นหลัก</h2>",
+    `<p>${intro}</p>`,
+    "<p>ไม่ต้องทำทุกอย่างพร้อมกัน เริ่มจากหน้าที่กระทบลูกค้ามากสุด แล้วค่อยขยายเมื่อเห็นผล</p>",
+    "<h2>สิ่งที่ควรทำก่อน</h2>",
+    `<ul>${points.map((point) => `<li>${point}</li>`).join("")}</ul>`,
+    "<h3>รายละเอียดที่มักถูกมองข้าม</h3>",
+    `<p>${extra ?? "เก็บหลักฐานจากหน้าจริง แล้วกลับมาปรับข้อความให้ตรงกับสิ่งที่ลูกค้าค้นหาและตัดสินใจ"}</p>`,
+    "<ul>",
+    "<li>เขียนหัวข้อให้ตรงกับคำถามของลูกค้า</li>",
+    "<li>มีตัวอย่างหรือตัวเลขประกอบ ไม่พูดกว้างเกินไป</li>",
+    "<li>ปิดท้ายด้วยขั้นตอนถัดไปที่ทำได้ทันที</li>",
+    "</ul>",
+    "<h2>วิธีวัดผลหลังเผยแพร่</h2>",
+    "<p>ดูพฤติกรรมบนหน้า ไม่ใช่แค่จำนวนคลิก ถ้าคนอ่านแล้วไม่ไปต่อ แสดงว่ายังไม่ตอบคำถามหลักของหน้า</p>",
+    "<ul>",
+    "<li>เวลาอ่านเฉลี่ยและอัตราเลื่อนหน้า</li>",
+    "<li>คลิกไปหน้าติดต่อหรือหน้าที่เกี่ยวข้อง</li>",
+    "<li>คำค้นที่นำคนเข้ามา แล้วนำไปปรับหัวข้อในรอบถัดไป</li>",
+    "</ul>",
+  ].join("");
+}
+
 export const CONTENT_TYPES: Record<ContentTypeId, ContentTypeConfig> = {
   job: {
     id: "job",
@@ -269,6 +293,102 @@ export const SAMPLE_ITEMS: Record<ContentTypeId, ContentItem[]> = {
         benefits: ["Hybrid", "ประกันสุขภาพ"],
       },
     },
+    {
+      id: "j7",
+      title: "Frontend Developer",
+      category: "Engineering",
+      location: "กรุงเทพมหานคร",
+      priceLabel: "35,000 – 55,000 บาท",
+      description: "พัฒนาหน้าเว็บและระบบจัดการเนื้อหาให้ใช้งานง่าย โหลดเร็ว",
+      status: "เปิดรับสมัคร",
+      icon: "💻",
+      imageColor: "linear-gradient(135deg,#DBEAFE,#F5F3FF)",
+      detailSections: {
+        responsibilities: ["พัฒนา UI", "ทำงานร่วมกับ Designer และ CMS"],
+        qualifications: ["React", "เข้าใจ HTML/CSS"],
+        benefits: ["Hybrid", "ประกันสุขภาพ"],
+      },
+    },
+    {
+      id: "j8",
+      title: "Graphic Designer",
+      category: "Design",
+      location: "Hybrid",
+      priceLabel: "25,000 – 40,000 บาท",
+      description: "ออกแบบสื่อดิจิทัลและชิ้นงานสำหรับแคมเปญการตลาด",
+      status: "เปิดรับสมัคร",
+      icon: "🎨",
+      imageColor: "linear-gradient(135deg,#FCE7F3,#FFF7ED)",
+      detailSections: {
+        responsibilities: ["ออกแบบแบนเนอร์และ Landing", "ดูแลแบรนด์วิชวล"],
+        qualifications: ["ใช้ Figma ได้", "พอร์ตโฟลิโอ"],
+        benefits: ["Hybrid", "อุปกรณ์ทำงาน"],
+      },
+    },
+    {
+      id: "j9",
+      title: "People Partner",
+      category: "People",
+      location: "กรุงเทพมหานคร",
+      priceLabel: "30,000 – 45,000 บาท",
+      description: "ดูแลการสรรหา ประสบการณ์พนักงาน และการสื่อสารภายในองค์กร",
+      status: "เปิดรับสมัคร",
+      icon: "🌱",
+      imageColor: "linear-gradient(135deg,#DCFCE7,#ECFEFF)",
+      detailSections: {
+        responsibilities: ["สรรหาและสัมภาษณ์", "ดูแล employee experience"],
+        qualifications: ["ประสบการณ์ HR 2 ปี", "สื่อสารได้ดี"],
+        benefits: ["ประกันสุขภาพ", "Hybrid"],
+      },
+    },
+    {
+      id: "j10",
+      title: "Account Executive",
+      category: "Sales",
+      location: "กรุงเทพมหานคร",
+      priceLabel: "22,000 – 32,000 บาท",
+      description: "ดูแลลูกค้าปัจจุบัน ขยายบัญชี และประสานงานกับทีม Delivery",
+      status: "เปิดรับสมัคร",
+      icon: "📒",
+      imageColor: "linear-gradient(135deg,#DBEAFE,#FDF2F8)",
+      detailSections: {
+        responsibilities: ["ดูแลบัญชีลูกค้า", "จัดทำ proposal"],
+        qualifications: ["ประสบการณ์ Account 1 ปี", "สื่อสารได้ดี"],
+        benefits: ["คอมมิชชัน", "ประกันสุขภาพ"],
+      },
+    },
+    {
+      id: "j11",
+      title: "Content Writer",
+      category: "Marketing",
+      location: "Hybrid",
+      priceLabel: "20,000 – 30,000 บาท",
+      description: "เขียนบทความและหน้าเว็บให้สอดคล้องกับ SEO และโทนแบรนด์",
+      status: "เปิดรับสมัคร",
+      icon: "✍️",
+      imageColor: "linear-gradient(135deg,#FEF3C7,#EFF6FF)",
+      detailSections: {
+        responsibilities: ["เขียนบทความและ Landing", "ปรับโทนให้อ่านง่าย"],
+        qualifications: ["เขียนภาษาไทยได้ดี", "เข้าใจ SEO พื้นฐาน"],
+        benefits: ["Hybrid", "ประกันสุขภาพ"],
+      },
+    },
+    {
+      id: "j12",
+      title: "QA Specialist",
+      category: "Engineering",
+      location: "กรุงเทพมหานคร",
+      priceLabel: "28,000 – 42,000 บาท",
+      description: "วางแผนทดสอบ ตรวจสอบคุณภาพเว็บและระบบก่อนปล่อยงาน",
+      status: "เปิดรับสมัคร",
+      icon: "✅",
+      imageColor: "linear-gradient(135deg,#DCFCE7,#EEF2FF)",
+      detailSections: {
+        responsibilities: ["เขียน test case", "ทดสอบก่อน release"],
+        qualifications: ["ประสบการณ์ QA 1 ปี", "ละเอียดรอบคอบ"],
+        benefits: ["Hybrid", "ประกันสุขภาพ"],
+      },
+    },
   ],
   blog: [
     {
@@ -282,8 +402,18 @@ export const SAMPLE_ITEMS: Record<ContentTypeId, ContentItem[]> = {
       status: "Featured",
       icon: "📝",
       imageColor: "linear-gradient(135deg,#DBEAFE,#F0FDF4)",
+      coverImage: "./covers/blog-seo.jpg",
       detailSections: {
-        body: `<h2>ทำความเข้าใจ Search Intent</h2><p>เริ่มจากการทำความเข้าใจ Intent ของผู้ค้นหา ว่าต้องการข้อมูล เปรียบเทียบ หรือพร้อมซื้อ</p><h2>ปรับหน้าสำคัญก่อน</h2><p>ปรับปรุงหน้าสำคัญให้โหลดเร็วและอ่านง่าย จากนั้นสร้างเนื้อหาที่ตอบคำถามลูกค้าอย่างตรงจุด</p><ul><li>ตรวจ Heading และ Internal link</li><li>เขียน Meta ให้ตรงกับหน้า</li><li>วัดผลจากหน้าที่มี Conversion</li></ul>`,
+        body: newsBody(
+          "SEO ที่ได้ผลในปีนี้ไม่ได้อยู่ที่คีย์เวิร์ดยาวๆ แต่เป็นการทำให้หน้าสำคัญตอบเจตนาค้นหาได้ชัด โหลดเร็ว และวัดผลจากหน้าที่มี Conversion",
+          [
+            "จัดกลุ่มหน้าตาม Search Intent ว่าต้องการข้อมูล เปรียบเทียบ หรือพร้อมซื้อ",
+            "ปรับ Heading, Internal link และ Meta ของหน้าเงินก่อน",
+            "ตรวจความเร็วและความอ่านง่ายบนมือถือ",
+            "วัดผลจากหน้าที่มีฟอร์มหรือปุ่มติดต่อ ไม่ใช่แค่ทราฟฟิก",
+          ],
+          "หลายเว็บทำคอนเทนต์ใหม่ต่อเนื่อง แต่ไม่กลับไปแก้หน้าเดิมที่ติดอันดับอยู่แล้ว การปรับปรุงหน้าเดิมมักให้ผลเร็วกว่าบทความใหม่",
+        ),
       },
     },
     {
@@ -297,7 +427,18 @@ export const SAMPLE_ITEMS: Record<ContentTypeId, ContentItem[]> = {
       status: "ใหม่",
       icon: "🎯",
       imageColor: "linear-gradient(135deg,#FEE2E2,#FFF7ED)",
-      detailSections: { body: article("Headline ไม่ชัด", "CTA เยอะเกินไป", "ไม่มี Social proof") },
+      coverImage: "./covers/blog-landing.jpg",
+      detailSections: {
+        body: newsBody(
+          "Landing Page ปิดการขายไม่ได้ มักไม่ใช่เพราะคนเข้ามาน้อย แต่เพราะข้อความไม่ชัด ปุ่มเยอะเกิน และไม่มีหลักฐานให้เชื่อ",
+          [
+            "เหลือ Headline เดียวที่บอกว่าได้อะไร",
+            "มี CTA หลักแค่จุดเดียวต่อหน้าจอ",
+            "ใส่ตัวอย่างผลงานหรือตัวเลขประกอบ",
+            "ตัดฟอร์มให้สั้นลงเหลือช่องที่จำเป็น",
+          ],
+        ),
+      },
     },
     {
       id: "b3",
@@ -310,7 +451,18 @@ export const SAMPLE_ITEMS: Record<ContentTypeId, ContentItem[]> = {
       status: "Popular",
       icon: "🚀",
       imageColor: "linear-gradient(135deg,#E0E7FF,#ECFEFF)",
-      detailSections: { body: article("กำหนดเป้าหมาย", "เตรียม messaging", "วัดผลหลัง launch") },
+      coverImage: "./covers/blog-launch.jpg",
+      detailSections: {
+        body: newsBody(
+          "เปิดตัวสินค้าใหม่ให้สำเร็จได้เมื่อทีมเห็นเป้าหมายเดียวกัน ทั้งข้อความ หน้าเว็บ และวิธีวัดผลหลังวัน Launch",
+          [
+            "กำหนดว่าสำเร็จคืออะไรภายใน 14 วันแรก",
+            "เตรียมหน้าสินค้า หน้าคำถามที่พบบ่อย และช่องทางติดต่อ",
+            "ซ้อมข้อความขายกับทีม Sales และ Support",
+            "วางแผนเก็บ feedback จากลูกค้ากลุ่มแรก",
+          ],
+        ),
+      },
     },
     {
       id: "b4",
@@ -323,7 +475,18 @@ export const SAMPLE_ITEMS: Record<ContentTypeId, ContentItem[]> = {
       status: "ใหม่",
       icon: "💼",
       imageColor: "linear-gradient(135deg,#DCFCE7,#F0F9FF)",
-      detailSections: { body: article("เขียน impact ไม่ใช่แค่ task", "ระบุ growth path") },
+      coverImage: "./covers/blog-hiring.jpg",
+      detailSections: {
+        body: newsBody(
+          "Job Description ที่ดึงดูดคนเก่งจะเล่าผลกระทบของงาน ไม่ใช่แค่รายการหน้าที่ยาวๆ ให้ผู้สมัครเห็นภาพว่าจะเติบโตอย่างไร",
+          [
+            "เปิดด้วยผลลัพธ์ที่ตำแหน่งนี้ต้องทำให้เกิด",
+            "ระบุทักษะที่ขาดไม่ได้จริงๆ ไม่ใส่ทุกอย่าง",
+            "บอกรูปแบบการทำงานและโอกาสเติบโต",
+            "ปิดด้วยขั้นตอนสมัครที่ชัดเจน",
+          ],
+        ),
+      },
     },
     {
       id: "b5",
@@ -331,12 +494,23 @@ export const SAMPLE_ITEMS: Record<ContentTypeId, ContentItem[]> = {
       category: "Content",
       location: "ทีม Content",
       priceLabel: "7 นาที",
-      publishedAt: "2026-07-22 09:00",
+      publishedAt: "2025-07-22 09:00",
       description: "วางแผนคอนเทนต์รายสัปดาห์โดยไม่ต้องมีทีมใหญ่",
       status: "Featured",
       icon: "📅",
       imageColor: "linear-gradient(135deg,#FEF3C7,#EEF2FF)",
-      detailSections: { body: article("เลือก 3 หัวข้อหลัก", "รีไซเคิลคอนเทนต์เก่า") },
+      coverImage: "./covers/blog-calendar.jpg",
+      detailSections: {
+        body: newsBody(
+          "ทีมเล็กไม่ต้องมีปฏิทินแน่นทั้งเดือน เลือก 3 หัวข้อหลักแล้วรีไซเคิลเป็นชิ้นสั้นๆ ก็พอให้ออกคอนเทนต์สม่ำเสมอ",
+          [
+            "เลือกธีมหลัก 3 เรื่องที่ธุรกิจพูดซ้ำได้",
+            "แตกบทความยาวเป็นโพสต์สั้นหลายชิ้น",
+            "เว้นช่องว่างสำหรับข่าวหรือเคสลูกค้าที่เข้ามา",
+            "ทบทวนปฏิทินทุกสองสัปดาห์ ไม่ต้องวางทั้งปี",
+          ],
+        ),
+      },
     },
     {
       id: "b6",
@@ -344,12 +518,95 @@ export const SAMPLE_ITEMS: Record<ContentTypeId, ContentItem[]> = {
       category: "Analytics",
       location: "ทีม Analytics",
       priceLabel: "9 นาที",
-      publishedAt: "2026-07-15 09:00",
+      publishedAt: "2025-07-15 09:00",
       description: "เลือก KPI ที่เชื่อมกับธุรกิจจริง ไม่ใช่แค่ vanity metrics",
       status: "ใหม่",
       icon: "📊",
       imageColor: "linear-gradient(135deg,#FCE7F3,#EFF6FF)",
-      detailSections: { body: article("วัดผลจากหน้าที่มี Conversion") },
+      coverImage: "./covers/blog-analytics.jpg",
+      detailSections: {
+        body: newsBody(
+          "Metric ที่ดีต้องบอกได้ว่าธุรกิจไปข้างหน้า ไม่ใช่แค่ยอดไลก์หรือทราฟฟิกที่ดูคึกคักแต่ไม่เกี่ยวกับยอดขาย",
+          [
+            "เลือก KPI ไม่เกิน 3 ตัวต่อแคมเปญ",
+            "ผูกแต่ละตัวกับหน้าหรือการกระทำที่มี Conversion",
+            "แยกตัวเลขดูเพลินออกจากตัวเลขที่ใช้ตัดสินใจ",
+            "รายงานเป็นช่วงเวลาเดียวกันทุกครั้ง",
+          ],
+        ),
+      },
+    },
+    {
+      id: "b7",
+      title: "เขียนอีเมลให้ลูกค้าอยากเปิดอ่าน",
+      category: "Content",
+      location: "ทีม Growth",
+      priceLabel: "6 นาที",
+      publishedAt: "2026-06-20 09:00",
+      description: "โครงสร้างหัวข้อ เนื้อหา และ CTA ที่ช่วยให้อีเมลไม่ถูกมองข้าม",
+      status: "ใหม่",
+      icon: "✉️",
+      imageColor: "linear-gradient(135deg,#DBEAFE,#FDF2F8)",
+      coverImage: "./covers/blog-email.jpg",
+      detailSections: {
+        body: newsBody(
+          "อีเมลที่คนอยากเปิดอ่านมีหัวข้อชัด เนื้อหาสั้น และบอกขั้นตอนถัดไปได้ในจดหมายฉบับเดียว",
+          [
+            "เขียนหัวข้อให้รู้ว่าได้อะไรตั้งแต่ยังไม่เปิด",
+            "มี CTA เดียวต่อฉบับ",
+            "เปิดด้วยประโยคที่เกี่ยวกับงานของผู้อ่าน",
+            "ตัดประโยคที่ขายของโดยยังไม่ให้ประโยชน์",
+          ],
+        ),
+      },
+    },
+    {
+      id: "b8",
+      title: "สร้างแบรนด์บนเว็บอย่างไรให้จำได้",
+      category: "Brand",
+      location: "ทีม Brand",
+      priceLabel: "8 นาที",
+      publishedAt: "2025-12-10 09:00",
+      description: "โทนสี ภาษา และหน้าสำคัญที่ทำให้แบรนด์สื่อสารเป็นเสียงเดียวกัน",
+      status: "Featured",
+      icon: "🎨",
+      imageColor: "linear-gradient(135deg,#E0E7FF,#FFF7ED)",
+      coverImage: "./covers/blog-brand.jpg",
+      detailSections: {
+        body: newsBody(
+          "แบรนด์บนเว็บจำได้เมื่อสี ภาษา และหน้าสำคัญพูดด้วยเสียงเดียวกัน ไม่ใช่แค่มีโลโก้ครบทุกหน้า",
+          [
+            "กำหนดโทนภาษาที่ใช้ซ้ำได้ทั้งเว็บและโซเชียล",
+            "ใช้สีหลักในจุดที่คนต้องตัดสินใจ",
+            "จัดหน้าเกี่ยวกับเรา บริการ และติดต่อให้สอดคล้องกัน",
+            "มีตัวอย่างงานจริง ไม่พูดกว้างว่าครบวงจร",
+          ],
+        ),
+      },
+    },
+    {
+      id: "b9",
+      title: "วางแผน Social Content ให้ไม่หมดไอเดีย",
+      category: "Content",
+      location: "ทีม Content",
+      priceLabel: "7 นาที",
+      publishedAt: "2026-05-02 09:00",
+      description: "วิธีแตกประเด็นจากบทความหลักไปสู่โพสต์สั้นๆ หลายชิ้น",
+      status: "Popular",
+      icon: "💬",
+      imageColor: "linear-gradient(135deg,#CCFBF1,#EEF2FF)",
+      coverImage: "./covers/blog-social.jpg",
+      detailSections: {
+        body: newsBody(
+          "ไอเดียโซเชียลไม่หมดถ้าเริ่มจากบทความหลักแล้วแตกเป็นชิ้นสั้นตามธีมรายสัปดาห์",
+          [
+            "รีไซเคิลบทความยาวเป็นคลิป คำคม และคาร์รูเซล",
+            "ตั้งธีมรายสัปดาห์ให้ทีมรู้ว่าจะพูดเรื่องอะไร",
+            "เก็บคำถามจากลูกค้ามาเป็นโพสต์",
+            "วางช่องว่างสำหรับข่าวที่เข้ามาแบบไม่ทันตั้งตัว",
+          ],
+        ),
+      },
     },
   ],
   product: [
@@ -562,7 +819,7 @@ export function createDefaultSettings(type: ContentTypeId = "job"): DisplaySetti
     card: {
       layout: "top",
       showThumbnail: true,
-      emptyImage: "placeholder",
+      emptyImage: "default",
       showTitle: true,
       showDescription: true,
       showCategory: true,
@@ -576,6 +833,8 @@ export function createDefaultSettings(type: ContentTypeId = "job"): DisplaySetti
       categoryIcon: { mode: "default" },
       locationIcon: { mode: "default" },
       priceIcon: { mode: "default" },
+      pricePlacement: "belowTitle",
+      listMetaLayout: "inline",
       meta1: { ...config.metaDefaults[0] },
       meta2: { ...config.metaDefaults[1] },
     },
@@ -652,7 +911,7 @@ export function applyContentType(
       layout: current.card.layout,
       showThumbnail:
         current.card.layout === "none" ? false : current.card.showThumbnail,
-      emptyImage: current.card.emptyImage,
+      emptyImage: current.card.emptyImage === "hide" ? "hide" : "default",
       showTitle: current.card.showTitle,
       showDescription: current.card.showDescription,
       showCategory: current.card.showCategory,
@@ -665,6 +924,14 @@ export function applyContentType(
       categoryIcon: current.card.categoryIcon ?? next.card.categoryIcon,
       locationIcon: current.card.locationIcon ?? next.card.locationIcon,
       priceIcon: current.card.priceIcon ?? next.card.priceIcon,
+      pricePlacement: current.card.pricePlacement ?? next.card.pricePlacement,
+      listMetaLayout:
+        current.card.listMetaLayout === "stack" ||
+        String(current.card.listMetaLayout) === "withPrice"
+          ? "stack"
+          : current.card.listMetaLayout === "inline"
+            ? "inline"
+            : next.card.listMetaLayout,
     },
     detail: {
       ...next.detail,

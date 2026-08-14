@@ -1,5 +1,10 @@
 import { CONTENT_TYPES } from "../data/content";
 import {
+  defaultCategoryIconSrc,
+  defaultLocationIconSrc,
+  defaultPriceIconSrc,
+} from "../data/defaultIcons";
+import {
   availableFilters,
   MAX_PRIMARY_FILTERS,
   searchPlaceholderFor,
@@ -13,6 +18,7 @@ import type {
   DisplaySettings,
   FilterKey,
   ListingView,
+  ListMetaLayout,
   MetaIconMode,
   MetaIconSetting,
   MetaSource,
@@ -23,9 +29,11 @@ import { Field, Section, SwitchRow } from "./ui";
 function IconSourcePicker({
   value,
   onChange,
+  defaultSrc,
 }: {
   value: MetaIconSetting;
   onChange: (next: MetaIconSetting) => void;
+  defaultSrc?: string;
 }) {
   const setting = value ?? { mode: "default" as const };
   const setMode = (mode: MetaIconMode) => onChange({ ...setting, mode });
@@ -50,6 +58,9 @@ function IconSourcePicker({
           </button>
         ))}
       </div>
+      {setting.mode === "default" && defaultSrc ? (
+        <img className="icon-default-preview" src={defaultSrc} alt="" />
+      ) : null}
       {setting.mode === "upload" ? (
         <label className="icon-upload">
           {setting.src ? (
@@ -155,10 +166,12 @@ export function ListingSettings({
   settings,
   config,
   onChange,
+  highlightViewToggle = false,
 }: {
   settings: DisplaySettings;
   config: ContentTypeConfig;
   onChange: (next: DisplaySettings) => void;
+  highlightViewToggle?: boolean;
 }) {
   const listing = settings.listing;
 
@@ -212,7 +225,7 @@ export function ListingSettings({
       >
         <SwitchRow
           label="แสดงช่องค้นหา"
-          impact="มีช่องพิมพ์ในแถวเดียวกับตัวกรองหลัก"
+          impact="มีช่องพิมพ์ กรองทันทีตอนพิมพ์ มีไอคอนแว่นในช่อง"
           on={listing.showSearch}
           onToggle={() => patch({ showSearch: !listing.showSearch })}
         />
@@ -284,13 +297,6 @@ export function ListingSettings({
               );
             })}
           </div>
-        </Field>
-        <Field label="ข้อความปุ่ม">
-          <input
-            value={listing.barButtonLabel}
-            onChange={(e) => patch({ barButtonLabel: e.target.value })}
-          />
-          <p className="help">เช่น ค้นหา หรือ ค้นหาตำแหน่งงาน</p>
         </Field>
         <Field label="สไตล์บาร์หน้าเต็ม">
           <p className="help" style={{ marginTop: 0 }}>
@@ -365,14 +371,19 @@ export function ListingSettings({
             <option value={1}>1 Column — รายการยาว / มือถือ</option>
           </select>
         </Field>
-        <SwitchRow
-          label="ให้สลับ Grid / List บนเดสก์ท็อป"
-          impact="มีปุ่มตารางและรายการบนหน้ารายการ ผู้เข้าชมเลือกเองได้ มือถือยังเป็นแถวเดียว"
-          on={listing.allowViewToggle}
-          onToggle={() =>
-            patch({ allowViewToggle: !listing.allowViewToggle })
-          }
-        />
+        <div
+          id="listing-view-toggle"
+          className={`setting-anchor${highlightViewToggle ? " is-highlight" : ""}`}
+        >
+          <SwitchRow
+            label="ให้สลับ Grid / List บนเดสก์ท็อป"
+            impact="มีปุ่มตารางและรายการบนหน้ารายการ เมื่อเปิดแล้วไปตั้งแถวข้อมูลแบบลิสต์ได้ที่แท็บ Card มือถือยังเป็นแถวเดียว"
+            on={listing.allowViewToggle}
+            onToggle={() =>
+              patch({ allowViewToggle: !listing.allowViewToggle })
+            }
+          />
+        </div>
         {listing.allowViewToggle ? (
           <Field label="มุมมองเริ่มต้น">
             <div className="icon-mode-toggle">
@@ -443,10 +454,12 @@ export function CardSettings({
   settings,
   config,
   onChange,
+  onGoToListing,
 }: {
   settings: DisplaySettings;
   config: ContentTypeConfig;
   onChange: (next: DisplaySettings) => void;
+  onGoToListing?: () => void;
 }) {
   const card = settings.card;
   const patch = (partial: Partial<DisplaySettings["card"]>) =>
@@ -458,6 +471,13 @@ export function CardSettings({
       showThumbnail: layout === "none" ? false : true,
     });
   };
+  const priceName = config.priceLabel.split(" / ")[0];
+  const categoryName = config.categoryLabel.split(" / ")[0];
+  const locationName = config.locationLabel.split(" / ")[0];
+  const listMetaLayout = card.listMetaLayout === "stack" ? "stack" : "inline";
+  const canSetListMeta = Boolean(settings.listing.allowViewToggle);
+  const showListMetaSetting =
+    card.showCategory || card.showLocation || card.showPrice;
 
   return (
     <>
@@ -509,18 +529,16 @@ export function CardSettings({
         />
         <Field label="ถ้าไม่มีรูป">
           <select
-            value={card.emptyImage}
+            value={card.emptyImage === "hide" ? "hide" : "default"}
             onChange={(e) =>
               patch({
-                emptyImage: e.target
-                  .value as DisplaySettings["card"]["emptyImage"],
+                emptyImage: e.target.value as DisplaySettings["card"]["emptyImage"],
               })
             }
             disabled={!card.showThumbnail || card.layout === "none"}
           >
-            <option value="placeholder">ใช้ Placeholder / Icon</option>
             <option value="hide">ซ่อนพื้นที่รูป</option>
-            <option value="default">ใช้ Default Image</option>
+            <option value="default">ใช้รูป Default</option>
           </select>
           <p className="help">ใช้เมื่อรายการนั้นยังไม่มี Cover</p>
         </Field>
@@ -566,6 +584,7 @@ export function CardSettings({
               <Field label={`ไอคอน${config.categoryLabel.split(" / ")[0]}`}>
                 <IconSourcePicker
                   value={card.categoryIcon}
+                  defaultSrc={defaultCategoryIconSrc(config.id)}
                   onChange={(categoryIcon) => patch({ categoryIcon })}
                 />
               </Field>
@@ -574,6 +593,7 @@ export function CardSettings({
               <Field label={`ไอคอน${config.locationLabel.split(" / ")[0]}`}>
                 <IconSourcePicker
                   value={card.locationIcon}
+                  defaultSrc={defaultLocationIconSrc(config.id)}
                   onChange={(locationIcon) => patch({ locationIcon })}
                 />
               </Field>
@@ -582,15 +602,82 @@ export function CardSettings({
               <Field label={`ไอคอน${config.priceLabel.split(" / ")[0]}`}>
                 <IconSourcePicker
                   value={card.priceIcon}
+                  defaultSrc={defaultPriceIconSrc(card.meta1.source)}
                   onChange={(priceIcon) => patch({ priceIcon })}
                 />
+              </Field>
+            ) : null}
+            {showListMetaSetting ? (
+              <Field label="แถวข้อมูลตอนดูแบบรายการ">
+                <div
+                  className={`seg cols-2${canSetListMeta ? "" : " is-disabled"}`}
+                >
+                  {(
+                    [
+                      ["inline", `${priceName}ชิดขวาบน`],
+                      ["stack", "เรียงลงทางซ้าย"],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      disabled={!canSetListMeta}
+                      className={`seg-btn${listMetaLayout === value ? " active" : ""}`}
+                      onClick={() =>
+                        patch({ listMetaLayout: value as ListMetaLayout })
+                      }
+                    >
+                      <div className={`mini-list-meta layout-${value}`}>
+                        <div className="mini-list-copy">
+                          <div className="mini-line title" />
+                          {value === "stack" ? (
+                            <>
+                              <div className="mini-line meta" />
+                              <div className="mini-line meta short" />
+                              <div className="mini-line meta accent" />
+                            </>
+                          ) : (
+                            <div className="mini-line meta" />
+                          )}
+                        </div>
+                        {value === "inline" ? (
+                          <div className="mini-line price top" />
+                        ) : null}
+                      </div>
+                      <span>{label}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="help">
+                  {canSetListMeta
+                    ? listMetaLayout === "stack"
+                      ? `${categoryName} ${locationName} และ${priceName}อยู่ทางซ้าย เรียงลงทีละบรรทัด`
+                      : `${priceName}อยู่ขวาบนคู่กับชื่อ ${categoryName}กับ${locationName}อยู่บรรทัดเดียวใต้ชื่อ`
+                    : (
+                      <>
+                        เปิด “ให้สลับ Grid / List บนเดสก์ท็อป” ก่อน จึงจะตั้งค่านี้ได้
+                        {onGoToListing ? (
+                          <>
+                            {" "}
+                            <button
+                              type="button"
+                              className="help-link"
+                              onClick={onGoToListing}
+                            >
+                              ไปแท็บหน้ารายการ
+                            </button>
+                          </>
+                        ) : null}
+                      </>
+                    )}
+                </p>
               </Field>
             ) : null}
           </>
         ) : null}
         <SwitchRow
           label={config.statusLabel}
-          impact="แสดงป้ายสถานะ เช่น เปิดรับสมัคร / Featured"
+          impact="ป้ายเขียวมุมซ้ายบนของรูป เช่น เปิดรับสมัคร / Featured / ยอดนิยม ถ้าไม่โชว์รูปจะอยู่ในการ์ด"
           on={card.showStatus}
           onToggle={() => patch({ showStatus: !card.showStatus })}
         />

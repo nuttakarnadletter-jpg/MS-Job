@@ -1,11 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { CONTENT_TYPES } from "../data/content";
 import {
+  defaultCategoryIconSrc,
+  defaultLocationIconSrc,
+  defaultPriceIconSrc,
+} from "../data/defaultIcons";
+import {
   availableFilters,
   listingQueryString,
   matchesPriceRange,
   matchesSearch,
-  searchHintFor,
+  matchesYear,
+  publishedYear,
 } from "../data/search";
 import type {
   BarStyle,
@@ -53,6 +59,7 @@ type FilterValues = {
   location: string;
   priceRangeId: string;
   status: string;
+  year: string;
 };
 
 function formatPublishedAt(value?: string) {
@@ -101,9 +108,11 @@ function safeHtml(html: string) {
 function MetaGlyph({
   setting,
   fallback,
+  defaultSrc,
 }: {
   setting?: MetaIconSetting;
   fallback: string;
+  defaultSrc?: string;
 }) {
   const mode = setting?.mode ?? "default";
   if (mode === "none") return null;
@@ -111,7 +120,32 @@ function MetaGlyph({
     if (!setting?.src) return null;
     return <img className="meta-icon-img" src={setting.src} alt="" />;
   }
+  if (defaultSrc) {
+    return <img className="meta-icon-img" src={defaultSrc} alt="" />;
+  }
   return <span className="meta-icon-fallback">{fallback}</span>;
+}
+
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+      <circle
+        cx="11"
+        cy="11"
+        r="6.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+      <path
+        d="M16.5 16.5L21 21"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
 }
 
 function ChevronIcon() {
@@ -200,18 +234,14 @@ function resolveMedia(
 ): { style: { background?: string; backgroundImage?: string; backgroundSize?: string; backgroundPosition?: string }; icon?: string } | null {
   if (!showSlot) return null;
   if (item.coverImage) return { style: mediaStyle(item) };
-  const empty = emptyImage ?? "placeholder";
-  if (empty === "hide") return null;
-  if (empty === "default") {
-    return {
-      style: {
-        backgroundImage: `url("${DEFAULT_COVER}")`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      },
-    };
-  }
-  return { style: { background: item.imageColor }, icon: item.icon };
+  if (emptyImage === "hide") return null;
+  return {
+    style: {
+      backgroundImage: `url("${DEFAULT_COVER}")`,
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+    },
+  };
 }
 
 function ItemCard({
@@ -220,12 +250,14 @@ function ItemCard({
   config,
   onOpen,
   isMobile,
+  listView = false,
 }: {
   item: ContentItem;
   settings: DisplaySettings;
   config: ContentTypeConfig;
   onOpen: () => void;
   isMobile: boolean;
+  listView?: boolean;
 }) {
   const { card } = settings;
   const mobile = settings.mobile ?? DEFAULT_MOBILE;
@@ -260,11 +292,33 @@ function ItemCard({
     />
   );
 
-  const showMeta = showCategory || showLocation || showPrice;
+  const listMetaLayout =
+    card.listMetaLayout === "stack" ? "stack" : "inline";
+  const salaryTopRight = listView && showPrice && listMetaLayout === "inline";
+  const priceOnTop =
+    showPrice &&
+    !listView &&
+    (card.pricePlacement ?? "belowTitle") === "top";
+  const showMeta =
+    showCategory ||
+    showLocation ||
+    (showPrice && !salaryTopRight && !priceOnTop);
+  const priceMeta = showPrice ? (
+    <span className={salaryTopRight ? "card-price-end" : undefined}>
+      <MetaGlyph
+        setting={card.priceIcon}
+        fallback="▱"
+        defaultSrc={defaultPriceIconSrc(card.meta1.source)}
+      />
+      {card.meta1.label}: {metaValue(item, card.meta1.source)}
+    </span>
+  ) : null;
+
+  const overlayStatus = showStatus && Boolean(media);
 
   return (
     <article
-      className={`item-card${media ? "" : " no-media"}`}
+      className={`item-card${media ? "" : " no-media"}${listView ? ` list-row list-meta-${listMetaLayout}` : ""}`}
       onClick={onOpen}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -278,34 +332,61 @@ function ItemCard({
       {media ? (
         <div className="thumb" style={media.style}>
           {media.icon ?? null}
+          {overlayStatus ? (
+            <span className="badge badge-on-media">{item.status}</span>
+          ) : null}
         </div>
       ) : null}
       <div className="card-body">
-        {card.showTitle ? <h3>{item.title}</h3> : null}
+        {salaryTopRight ? (
+          <div className="card-title-row">
+            {card.showTitle ? <h3>{item.title}</h3> : <span />}
+            {priceMeta}
+          </div>
+        ) : (
+          <>
+            {priceOnTop ? (
+              <div className="card-date-top">
+                <MetaGlyph
+                  setting={card.priceIcon}
+                  fallback="▱"
+                  defaultSrc={defaultPriceIconSrc(card.meta1.source)}
+                />
+                {metaValue(item, card.meta1.source)}
+              </div>
+            ) : null}
+            {card.showTitle ? <h3>{item.title}</h3> : null}
+          </>
+        )}
         {showMeta ? (
           <div className="meta">
             {showCategory ? (
               <span>
-                <MetaGlyph setting={card.categoryIcon} fallback="▣" />
+                <MetaGlyph
+                  setting={card.categoryIcon}
+                  fallback="▣"
+                  defaultSrc={defaultCategoryIconSrc(settings.contentType)}
+                />
                 {card.meta2.label}: {metaValue(item, card.meta2.source)}
               </span>
             ) : null}
             {showLocation ? (
               <span>
-                <MetaGlyph setting={card.locationIcon} fallback="⌖" />
+                <MetaGlyph
+                  setting={card.locationIcon}
+                  fallback="⌖"
+                  defaultSrc={defaultLocationIconSrc(settings.contentType)}
+                />
                 {item.location}
               </span>
             ) : null}
-            {showPrice ? (
-              <span>
-                <MetaGlyph setting={card.priceIcon} fallback="▱" />
-                {card.meta1.label}: {metaValue(item, card.meta1.source)}
-              </span>
-            ) : null}
+            {salaryTopRight || priceOnTop ? null : priceMeta}
           </div>
         ) : null}
         {showDescription ? <div className="desc">{item.description}</div> : null}
-        {showStatus ? <span className="badge">{item.status}</span> : null}
+        {showStatus && !overlayStatus ? (
+          <span className="badge">{item.status}</span>
+        ) : null}
         {showCta ? (
           <button
             type="button"
@@ -389,67 +470,108 @@ function DetailView({
     <span className="badge">{item.status}</span>
   ) : null;
   const hasMeta =
-    detail.showCategory ||
-    detail.showLocation ||
-    detail.showPrice ||
-    (!ctaTopRight && detail.showStatus);
+    detail.showCategory || detail.showLocation || detail.showPrice;
   const meta = hasMeta ? (
     <div className="detail-meta">
       {detail.showCategory ? (
         <span>
-          <MetaGlyph setting={card.categoryIcon} fallback="▣" />
+          <MetaGlyph
+            setting={card.categoryIcon}
+            fallback="▣"
+            defaultSrc={defaultCategoryIconSrc(settings.contentType)}
+          />
           {item.category}
         </span>
       ) : null}
       {detail.showLocation ? (
         <span>
-          <MetaGlyph setting={card.locationIcon} fallback="⌖" />
+          <MetaGlyph
+            setting={card.locationIcon}
+            fallback="⌖"
+            defaultSrc={defaultLocationIconSrc(settings.contentType)}
+          />
           {item.location}
         </span>
       ) : null}
       {detail.showPrice ? (
         <span>
-          <MetaGlyph setting={card.priceIcon} fallback="▱" />
+          <MetaGlyph
+            setting={card.priceIcon}
+            fallback="▱"
+            defaultSrc={defaultPriceIconSrc(card.meta1.source)}
+          />
           {metaValue(item, card.meta1.source)}
         </span>
       ) : null}
-      {ctaTopRight ? null : statusBadge}
     </div>
   ) : null;
 
-  return (
-    <div className="detail-page">
-      <button type="button" className="detail-back" onClick={onBack}>
-        ← กลับไปหน้า Listing
-      </button>
-      {media ? (
-        <div className="detail-hero-media" style={media.style}>
-          {media.icon ?? null}
-        </div>
+  const isArticle = settings.contentType === "blog";
+  const articleMeta = (
+    <div className="article-split-meta">
+      {detail.showPrice ? (
+        <span>{formatPublishedAt(item.publishedAt) || item.priceLabel}</span>
       ) : null}
-      {ctaTopRight ? (
-        <>
-          <div className="detail-header">
-            <div className="detail-header-copy">
-              <div className="detail-title-row">
-                <h1>{item.title}</h1>
-                {statusBadge}
-              </div>
-              {meta}
-            </div>
-            <DetailCta item={item} label={ctaLabel} />
+      {detail.showLocation ? <span>{item.location}</span> : null}
+    </div>
+  );
+
+  return (
+    <div className={`detail-page${isArticle ? " article-detail" : ""}`}>
+      {isArticle ? null : (
+        <button type="button" className="detail-back" onClick={onBack}>
+          ← กลับไปหน้า Listing
+        </button>
+      )}
+      {isArticle ? (
+        <div className="article-split">
+          <div className="article-split-copy">
+            {articleMeta}
+            <h1>{item.title}</h1>
+            <p>{item.description}</p>
           </div>
-          <hr className="detail-header-rule" />
-        </>
+          <div
+            className="article-split-media"
+            style={media?.style ?? { background: item.imageColor }}
+          >
+            {media?.icon ?? null}
+          </div>
+        </div>
       ) : (
         <>
-          <h1>{item.title}</h1>
-          {meta}
+          {media ? (
+            <div className="detail-hero-media" style={media.style}>
+              {media.icon ?? null}
+            </div>
+          ) : null}
+          {ctaTopRight ? (
+            <>
+              <div className="detail-header">
+                <div className="detail-header-copy">
+                  <h1>{item.title}</h1>
+                  {meta}
+                  {statusBadge ? (
+                    <div className="detail-status">{statusBadge}</div>
+                  ) : null}
+                </div>
+                <DetailCta item={item} label={ctaLabel} />
+              </div>
+              <hr className="detail-header-rule" />
+            </>
+          ) : (
+            <>
+              <h1>{item.title}</h1>
+              {meta}
+              {statusBadge ? (
+                <div className="detail-status">{statusBadge}</div>
+              ) : null}
+            </>
+          )}
+          <p style={{ color: "#667085", fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+            {item.description}
+          </p>
         </>
       )}
-      <p style={{ color: "#667085", fontSize: 14, lineHeight: 1.6, margin: 0 }}>
-        {item.description}
-      </p>
 
       {detail.showResponsibilities && item.detailSections.responsibilities ? (
         <div className="detail-section">
@@ -486,7 +608,7 @@ function DetailView({
 
       {detail.showBody && item.detailSections.body ? (
         <div className="detail-section">
-          <h3>รายละเอียด</h3>
+          {isArticle ? null : <h3>รายละเอียด</h3>}
           <div
             className="article-body"
             dangerouslySetInnerHTML={{
@@ -496,7 +618,7 @@ function DetailView({
         </div>
       ) : null}
 
-      {ctaTopRight ? null : <DetailCta item={item} label={ctaLabel} />}
+      {ctaTopRight || isArticle ? null : <DetailCta item={item} label={ctaLabel} />}
     </div>
   );
 }
@@ -564,6 +686,7 @@ function FinderSelect({
   categories,
   locations,
   statuses,
+  years,
   onChange,
 }: {
   filterKey: FilterKey;
@@ -572,6 +695,7 @@ function FinderSelect({
   categories: string[];
   locations: string[];
   statuses: string[];
+  years: string[];
   onChange: (partial: Partial<FilterValues>) => void;
 }) {
   if (filterKey === "category") {
@@ -633,6 +757,21 @@ function FinderSelect({
       </select>
     );
   }
+  if (filterKey === "year") {
+    return (
+      <select
+        value={values.year}
+        onChange={(event) => onChange({ year: event.target.value })}
+      >
+        <option value="">ทุกปี</option>
+        {years.map((year) => (
+          <option key={year} value={year}>
+            {year}
+          </option>
+        ))}
+      </select>
+    );
+  }
   return null;
 }
 
@@ -645,6 +784,7 @@ function FinderBar({
   categories,
   locations,
   statuses,
+  years,
   onChange,
   onSubmit,
 }: {
@@ -656,6 +796,7 @@ function FinderBar({
   categories: string[];
   locations: string[];
   statuses: string[];
+  years: string[];
   onChange: (partial: Partial<FilterValues>) => void;
   onSubmit: () => void;
 }) {
@@ -681,11 +822,16 @@ function FinderBar({
       {listing.showSearch ? (
         <label className="finder-field finder-search">
           <span>ค้นหา</span>
-          <input
-            value={values.query}
-            placeholder={listing.searchPlaceholder}
-            onChange={(event) => onChange({ query: event.target.value })}
-          />
+          <div className="finder-search-box">
+            <span className="finder-search-icon">
+              <SearchIcon />
+            </span>
+            <input
+              value={values.query}
+              placeholder={listing.searchPlaceholder}
+              onChange={(event) => onChange({ query: event.target.value })}
+            />
+          </div>
         </label>
       ) : null}
       {listing.primaryFilters.map((key) => (
@@ -698,13 +844,11 @@ function FinderBar({
             categories={categories}
             locations={locations}
             statuses={statuses}
+            years={years}
             onChange={onChange}
           />
         </label>
       ))}
-      <button type="submit" className="finder-submit">
-        {listing.barButtonLabel || "ค้นหา"}
-      </button>
     </form>
   );
 }
@@ -718,6 +862,7 @@ export function LivePreview({
   toolbarLabel,
   heroTitle,
   heroSubtitle,
+  pageSize = PAGE_SIZE,
   onDeviceChange,
   onModeChange,
   onSelect,
@@ -730,6 +875,7 @@ export function LivePreview({
   toolbarLabel?: string;
   heroTitle?: string;
   heroSubtitle?: string;
+  pageSize?: number;
   onDeviceChange: (device: DevicePreview) => void;
   onModeChange: (mode: PreviewMode) => void;
   onSelect: (id: string | null) => void;
@@ -738,7 +884,6 @@ export function LivePreview({
   const selected = items.find((i) => i.id === selectedId) ?? items[0];
   const listing = settings.listing;
   const [surface, setSurface] = useState<PreviewSurface>("listing");
-  const [extraOpen, setExtraOpen] = useState(false);
   const [outboundUrl, setOutboundUrl] = useState<string | null>(null);
   const [downloadItem, setDownloadItem] = useState<ContentItem | null>(null);
   const [visitorView, setVisitorView] = useState<ListingView>(
@@ -751,6 +896,7 @@ export function LivePreview({
     location: "",
     priceRangeId: "all",
     status: "",
+    year: "",
   });
 
   const patchValues = (partial: Partial<FilterValues>) =>
@@ -763,8 +909,8 @@ export function LivePreview({
       location: "",
       priceRangeId: "all",
       status: "",
+      year: "",
     });
-    setExtraOpen(false);
     setOutboundUrl(null);
     setDownloadItem(null);
     setPage(1);
@@ -795,6 +941,12 @@ export function LivePreview({
   );
   const statuses = useMemo(
     () => [...new Set(items.map((item) => item.status))],
+    [items],
+  );
+  const years = useMemo(
+    () =>
+      [...new Set(items.map((item) => publishedYear(item.publishedAt)).filter(Boolean))]
+        .sort((a, b) => Number(b) - Number(a)),
     [items],
   );
   const activeFilterKeys = new Set([
@@ -837,6 +989,13 @@ export function LivePreview({
         ) {
           return false;
         }
+        if (
+          activeFilterKeys.has("year") &&
+          values.year &&
+          !matchesYear(item, values.year)
+        ) {
+          return false;
+        }
         return true;
       }),
     [
@@ -848,13 +1007,13 @@ export function LivePreview({
       priceRange,
     ],
   );
-  const totalPages = Math.max(1, Math.ceil(visibleItems.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(visibleItems.length / pageSize));
   const pagedItems =
     listing.pagination === "none"
       ? visibleItems
       : listing.pagination === "loadmore"
-        ? visibleItems.slice(0, page * PAGE_SIZE)
-        : visibleItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+        ? visibleItems.slice(0, page * pageSize)
+        : visibleItems.slice((page - 1) * pageSize, page * pageSize);
   const hasMore =
     listing.pagination === "loadmore" && pagedItems.length < visibleItems.length;
 
@@ -866,6 +1025,7 @@ export function LivePreview({
     values.location,
     values.priceRangeId,
     values.status,
+    values.year,
     listing.pagination,
   ]);
 
@@ -875,7 +1035,6 @@ export function LivePreview({
     }
   }, [listing.pagination, totalPages]);
 
-  const searchHint = searchHintFor(config, listing.searchFields);
   const extraFilters = availableFilters(config).filter((filter) =>
     listing.extraFilters.includes(filter.id),
   );
@@ -902,6 +1061,7 @@ export function LivePreview({
     location: activeFilterKeys.has("location") ? values.location : "",
     priceRange: activeFilterKeys.has("priceRange") ? values.priceRangeId : "all",
     status: activeFilterKeys.has("status") ? values.status : "",
+    year: activeFilterKeys.has("year") ? values.year : "",
   });
   const previewUrl = outboundUrl
     ? outboundUrl.replace(/^https?:\/\//, "")
@@ -927,7 +1087,6 @@ export function LivePreview({
   };
   const goToListing = () => {
     setSurface("listing");
-    setExtraOpen(false);
     clearOverlays();
     onModeChange("listing");
   };
@@ -1047,6 +1206,7 @@ export function LivePreview({
                     categories={categories}
                     locations={locations}
                     statuses={statuses}
+                    years={years}
                     onChange={patchValues}
                     onSubmit={goToListing}
                   />
@@ -1075,47 +1235,13 @@ export function LivePreview({
                   categories={categories}
                   locations={locations}
                   statuses={statuses}
+                  years={years}
                   onChange={patchValues}
                   onSubmit={goToListing}
                 />
-                {searchHint && listing.showSearch ? (
-                  <div className="search-hint">{searchHint}</div>
-                ) : null}
               </section>
 
               <section className="content">
-                {showExtraFilterBar ? (
-                  <div className="extra-filters">
-                    <button
-                      type="button"
-                      className="extra-filters-toggle"
-                      onClick={() => setExtraOpen((open) => !open)}
-                    >
-                      ตัวกรองเพิ่มเติม {extraOpen ? "▴" : "▾"}
-                    </button>
-                    {extraOpen ? (
-                      <div className="extra-filters-row">
-                        {listing.extraFilters.map((key) => (
-                          <label className="finder-field extra" key={key}>
-                            <span>
-                              {filterLabel(key, extraFilters)}
-                            </span>
-                            <FinderSelect
-                              filterKey={key}
-                              config={config}
-                              values={values}
-                              categories={categories}
-                              locations={locations}
-                              statuses={statuses}
-                              onChange={patchValues}
-                            />
-                          </label>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-
                 <div className="front-toolbar">
                   {listing.showResultCount ? (
                     <div className="result-count">
@@ -1124,7 +1250,31 @@ export function LivePreview({
                   ) : (
                     <div />
                   )}
-                  {listing.allowViewToggle && !isMobile ? (
+                  <div className="front-toolbar-end">
+                    {showExtraFilterBar ? (
+                      <div className="extra-filters">
+                        <div className="extra-filters-row">
+                          {listing.extraFilters.map((key) => (
+                            <label className="finder-field extra" key={key}>
+                              <span>
+                                {filterLabel(key, extraFilters)}
+                              </span>
+                              <FinderSelect
+                                filterKey={key}
+                                config={config}
+                                values={values}
+                                categories={categories}
+                                locations={locations}
+                                statuses={statuses}
+                                years={years}
+                                onChange={patchValues}
+                              />
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                    {listing.allowViewToggle && !isMobile ? (
                     <div className="view-toggle" role="group" aria-label="มุมมองรายการ">
                       <button
                         type="button"
@@ -1155,11 +1305,12 @@ export function LivePreview({
                       </button>
                     </div>
                   ) : null}
+                  </div>
                 </div>
 
                 {visibleItems.length > 0 ? (
                   <div
-                    className={`cards ${colsClass}${useHorizontal ? " horizontal" : ""}`}
+                    className={`cards ${colsClass} type-${settings.contentType}${useHorizontal ? " horizontal" : ""}${useListView ? " list-view" : ""}`}
                   >
                     {pagedItems.map((item) => (
                       <ItemCard
@@ -1169,6 +1320,7 @@ export function LivePreview({
                         config={config}
                         onOpen={() => openItem(item)}
                         isMobile={isMobile}
+                        listView={useListView}
                       />
                     ))}
                   </div>
@@ -1179,8 +1331,7 @@ export function LivePreview({
                 )}
 
                 {listing.pagination === "pagination" &&
-                visibleItems.length > 0 &&
-                totalPages > 1 ? (
+                visibleItems.length > 0 ? (
                   <div className="pagination">
                     <button
                       type="button"

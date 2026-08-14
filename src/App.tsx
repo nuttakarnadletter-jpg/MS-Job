@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AppstoreOutlined,
   ArrowLeftOutlined,
   DeleteOutlined,
   EditOutlined,
   EnvironmentOutlined,
+  ExperimentOutlined,
   EyeOutlined,
   FileOutlined,
   FireOutlined,
@@ -114,6 +115,11 @@ const MENU_ITEMS: MenuProps["items"] = [
   { key: "Step Information", icon: <OrderedListOutlined />, label: "Step Information" },
   { key: "Web Editor", icon: <EditOutlined />, label: "Web Editor" },
   { key: "Search Listing", icon: <SearchOutlined />, label: "Search Listing" },
+  {
+    key: "Recommended Display",
+    icon: <ExperimentOutlined />,
+    label: "Recommended Display",
+  },
   { key: "Flash Sale", icon: <FireOutlined />, label: "Flash Sale" },
   { key: "Flash Sale Shelf", icon: <FireOutlined />, label: "Flash Sale Shelf" },
   { key: "Branch", icon: <EnvironmentOutlined />, label: "Branch" },
@@ -302,6 +308,7 @@ export default function App() {
     createDefaultSettings("job"),
   );
   const [tab, setTab] = useState<SettingsTab>("listing");
+  const [highlightListingToggle, setHighlightListingToggle] = useState(false);
   const [device, setDevice] = useState<DevicePreview>("desktop");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [previewOverride, setPreviewOverride] = useState<PreviewMode | null>(
@@ -334,6 +341,14 @@ export default function App() {
   const impact = IMPACT_COPY[tab];
   const previewMode: PreviewMode =
     previewOverride ?? (tab === "detail" ? "detail" : "listing");
+
+  useEffect(() => {
+    if (tab !== "listing" || !highlightListingToggle) return;
+    const el = document.getElementById("listing-view-toggle");
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const timer = window.setTimeout(() => setHighlightListingToggle(false), 1800);
+    return () => window.clearTimeout(timer);
+  }, [tab, highlightListingToggle]);
   const filteredJobs = useMemo(() => {
     const keyword = query.trim().toLowerCase();
     if (!keyword) return listings;
@@ -724,6 +739,12 @@ export default function App() {
           <h3>ตั้งค่าหน้าบ้าน</h3>
           <p>ซ้ายตั้งค่า · ขวาคือหน้าเว็บที่ผู้เข้าชมจะเห็น</p>
         </div>
+        <Button
+          href={`./recommend.html#${activeJob.contentType}`}
+          icon={<ExperimentOutlined />}
+        >
+          ดูดีไซน์ที่แนะนำ
+        </Button>
       </div>
 
       <div className="layout edit-builder-layout">
@@ -758,10 +779,24 @@ export default function App() {
           </div>
 
           {tab === "listing" ? (
-            <ListingSettings settings={settings} config={config} onChange={setSettings} />
+            <ListingSettings
+              settings={settings}
+              config={config}
+              onChange={setSettings}
+              highlightViewToggle={highlightListingToggle}
+            />
           ) : null}
           {tab === "card" ? (
-            <CardSettings settings={settings} config={config} onChange={setSettings} />
+            <CardSettings
+              settings={settings}
+              config={config}
+              onChange={setSettings}
+              onGoToListing={() => {
+                setTab("listing");
+                setPreviewOverride(null);
+                setHighlightListingToggle(true);
+              }}
+            />
           ) : null}
           {tab === "detail" ? (
             <DetailSettings settings={settings} config={config} onChange={setSettings} />
@@ -1115,6 +1150,9 @@ export default function App() {
             onChange={(event) => setQuery(event.target.value)}
             style={{ width: 280 }}
           />
+          <Button icon={<ExperimentOutlined />} href="./recommend.html">
+            Recommended display
+          </Button>
           <Button
             type="primary"
             icon={<PlusOutlined />}
@@ -1361,6 +1399,10 @@ export default function App() {
           selectedKeys={["Search Listing"]}
           items={MENU_ITEMS}
           onClick={({ key }) => {
+            if (key === "Recommended Display") {
+              window.location.href = "./recommend.html";
+              return;
+            }
             if (key !== "Search Listing") {
               message.info(`โมดูล ${key} ยังไม่เปิดในตัวอย่างนี้`);
             } else {

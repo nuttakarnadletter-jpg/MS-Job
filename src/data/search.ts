@@ -11,17 +11,6 @@ export function searchPlaceholderFor(
   return `ค้นหา${labels.join(", ")}...`;
 }
 
-export function searchHintFor(
-  config: ContentTypeConfig,
-  fieldIds: string[],
-): string {
-  const labels = fieldIds
-    .map((id) => config.searchFields.find((field) => field.id === id)?.label)
-    .filter((label): label is string => Boolean(label));
-  if (labels.length === 0) return "";
-  return `ค้นหาได้จาก ${labels.join(" · ")}`;
-}
-
 function fieldValue(item: ContentItem, fieldId: string): string {
   switch (fieldId) {
     case "title":
@@ -76,6 +65,20 @@ export function matchesPriceRange(
   return low <= ceiling && high >= floor;
 }
 
+export function publishedYear(value?: string): string {
+  if (!value) return "";
+  const date = new Date(value.replace(" ", "T"));
+  if (Number.isNaN(date.getTime())) {
+    return value.match(/^(\d{4})/)?.[1] ?? "";
+  }
+  return String(date.getFullYear());
+}
+
+export function matchesYear(item: ContentItem, year: string): boolean {
+  if (!year) return true;
+  return publishedYear(item.publishedAt) === year;
+}
+
 export const MAX_PRIMARY_FILTERS = 3;
 
 function searchFieldLabel(
@@ -100,6 +103,7 @@ export function availableFilters(
     id: "status",
     label: searchFieldLabel(config, "status", "สถานะ"),
   });
+  filters.push({ id: "year", label: "ปี" });
   return filters;
 }
 
@@ -125,6 +129,7 @@ export function listingQueryString(values: {
   location?: string;
   priceRange?: string;
   status?: string;
+  year?: string;
 }): string {
   const params = new URLSearchParams();
   if (values.q?.trim()) params.set("q", values.q.trim());
@@ -134,6 +139,7 @@ export function listingQueryString(values: {
     params.set("price", values.priceRange);
   }
   if (values.status) params.set("status", values.status);
+  if (values.year) params.set("year", values.year);
   const query = params.toString();
   return query ? `?${query}` : "";
 }
