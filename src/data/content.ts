@@ -81,7 +81,7 @@ export const CONTENT_TYPES: Record<ContentTypeId, ContentTypeConfig> = {
     label: "Blog / News",
     pageName: "Articles",
     heroTitle: "Insights & Stories",
-    heroSubtitle: "บทความ ข่าวสาร และเรื่องราวจากทีม Readyplanet",
+    heroSubtitle: "บทความ ข่าวสาร และเรื่องราวจากทีม Company",
     crumb: "Articles / Display Settings",
     searchPlaceholder: "ค้นหาบทความ...",
     resultLabel: (n) => `พบ ${n} บทความ`,
@@ -851,7 +851,7 @@ export function createDefaultSettings(type: ContentTypeId = "job"): DisplaySetti
       ctaPosition: "bottom",
     },
     seo: {
-      pageTitle: `${config.pageName} | Readyplanet`,
+      pageTitle: `${config.pageName} | Company`,
       slug: `/${type === "job" ? "career/open-positions" : type}`,
       metaDescription: config.heroSubtitle,
       indexable: true,

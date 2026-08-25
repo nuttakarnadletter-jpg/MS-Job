@@ -1066,12 +1066,12 @@ export function LivePreview({
   const previewUrl = outboundUrl
     ? outboundUrl.replace(/^https?:\/\//, "")
     : downloadItem
-      ? `readyplanet.com/download/${downloadItem.fileName || downloadItem.id}`
+      ? `company.com/download/${downloadItem.fileName || downloadItem.id}`
       : mode === "detail" && selected
-      ? `readyplanet.com${settings.seo.slug}/${selected.id}`
+      ? `company.com${settings.seo.slug}/${selected.id}`
       : surface === "home" && mode === "listing"
-        ? "readyplanet.com/"
-        : `readyplanet.com${settings.seo.slug}${queryString}`;
+        ? "company.com/"
+        : `company.com${settings.seo.slug}${queryString}`;
   const surfaceLabel = outboundUrl
     ? "พรีวิวลิงก์ภายนอก — รายการนี้ไม่เข้าหน้ารายละเอียด"
     : downloadItem
@@ -1161,7 +1161,7 @@ export function LivePreview({
 
         <div className="front">
           <div className="site-header">
-            <div className="logo">readyplanet</div>
+            <div className="logo">company</div>
             <div className="navlinks">
               <span>About</span>
               <span>Services</span>
@@ -1380,7 +1380,7 @@ export function LivePreview({
                 <div className="seo-label">ตัวอย่างในผลการค้นหา</div>
                 <div className="seo-title">{settings.seo.pageTitle}</div>
                 <div className="seo-url">
-                  readyplanet.com{settings.seo.slug}
+                  company.com{settings.seo.slug}
                   {queryString}
                   {!settings.seo.indexable ? "  ·  noindex" : ""}
                 </div>

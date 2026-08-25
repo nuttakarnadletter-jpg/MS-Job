@@ -159,7 +159,7 @@ const SEARCH_LISTINGS: SearchListing[] = [
     id: "sl-2",
     name: "บทความบริษัท",
     title: "Insights & Stories",
-    description: "บทความ แนวคิด และเรื่องราวจากทีม Readyplanet",
+    description: "บทความ แนวคิด และเรื่องราวจากทีม Company",
     contentType: "blog",
     createdAt: "2026-06-18 10:12",
     updatedAt: "2026-07-28 09:40",
@@ -168,7 +168,7 @@ const SEARCH_LISTINGS: SearchListing[] = [
     id: "sl-3",
     name: "ข่าวสารและกิจกรรม",
     title: "ข่าวสารล่าสุด",
-    description: "อัปเดตข่าวประกาศและกิจกรรมจาก Readyplanet",
+    description: "อัปเดตข่าวประกาศและกิจกรรมจาก Company",
     contentType: "blog",
     createdAt: "2026-06-17 11:55",
     updatedAt: "2026-07-27 14:18",
@@ -416,7 +416,7 @@ export default function App() {
       seo: {
         ...current.seo,
         pageTitle: heading.trim()
-          ? `${heading} | Readyplanet`
+          ? `${heading} | Company`
           : current.seo.pageTitle,
       },
     }));
