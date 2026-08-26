@@ -64,6 +64,7 @@ import {
   SeoSettings,
 } from "./components/SettingsPanels";
 import { LivePreview } from "./components/LivePreview";
+import { ArticleBoxModule } from "./components/ArticleBoxModule";
 import { BodyEditor } from "./components/BodyEditor";
 import { DragHandle, SortableItemRow } from "./components/SortableItemRow";
 import {
@@ -97,6 +98,7 @@ const TABS: { id: SettingsTab; label: string }[] = [
 const MENU_ITEMS: MenuProps["items"] = [
   { key: "ภาพรวม", icon: <HomeOutlined />, label: "ภาพรวม" },
   { key: "Search Listing", icon: <SearchOutlined />, label: "Search Listing" },
+  { key: "Article Display", icon: <FileOutlined />, label: "Article Display" },
   {
     key: "Recommended Display",
     icon: <ExperimentOutlined />,
@@ -192,6 +194,7 @@ const IMPACT_COPY: Record<SettingsTab, { title: string; body: string }> = {
 
 type Screen = "list" | "edit";
 type EditTab = "general" | "items" | "display";
+type ActiveModule = "search-listing" | "article-display";
 
 function parseLines(value: string) {
   const lines = value
@@ -293,6 +296,7 @@ export default function App() {
     null,
   );
   const [screen, setScreen] = useState<Screen>("list");
+  const [activeModule, setActiveModule] = useState<ActiveModule>("search-listing");
   const [editTab, setEditTab] = useState<EditTab>("items");
   const [listings, setListings] = useState(SEARCH_LISTINGS);
   const [activeJobId, setActiveJobId] = useState(SEARCH_LISTINGS[0].id);
@@ -1374,17 +1378,24 @@ export default function App() {
         <Menu
           className="cms-sider-menu"
           mode="inline"
-          selectedKeys={["Search Listing"]}
+          selectedKeys={[activeModule === "article-display" ? "Article Display" : "Search Listing"]}
           items={MENU_ITEMS}
           onClick={({ key }) => {
             if (key === "Recommended Display") {
               window.location.href = "./recommend.html";
               return;
             }
+            if (key === "Article Display") {
+              setActiveModule("article-display");
+              return;
+            }
+            if (key === "Search Listing") {
+              setActiveModule("search-listing");
+              setScreen("list");
+              return;
+            }
             if (key !== "Search Listing") {
               message.info(`โมดูล ${key} ยังไม่เปิดในตัวอย่างนี้`);
-            } else {
-              setScreen("list");
             }
           }}
         />
@@ -1412,7 +1423,13 @@ export default function App() {
         </Header>
 
         <Content className="cms-shell-content">
-          {screen === "list" || !activeJob ? renderListScreen() : renderEditScreen()}
+          {activeModule === "article-display" ? (
+            <ArticleBoxModule />
+          ) : screen === "list" || !activeJob ? (
+            renderListScreen()
+          ) : (
+            renderEditScreen()
+          )}
         </Content>
       </Layout>
     </Layout>

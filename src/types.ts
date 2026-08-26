@@ -159,3 +159,52 @@ export interface DisplaySettings {
   };
   mobile: MobileSettings;
 }
+
+export type ArticleLocale = "th" | "en";
+export type ArticleLayout = "grid" | "list" | "featured";
+export type ArticleGridColumns = 3 | 4;
+export type ArticleDisplayMode = "carousel" | "pagination";
+export type ArticleCtaStyle = "link" | "button";
+export type ArticleHeaderAlign = "left" | "center";
+export type ArticleViewAllPosition = "headerRight" | "bottomCenter";
+export type ArticleSort = "latest" | "oldest" | "title";
+
+export interface LocalizedText {
+  th: string;
+  en: string;
+}
+
+export interface ArticleBoxSettings {
+  name: string;
+  sourceCategories: string[];
+  sort: ArticleSort;
+  showFilterTabs: boolean;
+  showAllTab: boolean;
+  filterCategories: string[];
+  layout: ArticleLayout;
+  columns: ArticleGridColumns;
+  maxItems: number;
+  displayMode: ArticleDisplayMode;
+  showCategoryBadge: boolean;
+  showPublishedAt: boolean;
+  showExcerpt: boolean;
+  showCta: boolean;
+  ctaStyle: ArticleCtaStyle;
+  ctaLabel: LocalizedText;
+  showHeader: boolean;
+  headerTitle: LocalizedText;
+  headerDescription: LocalizedText;
+  headerAlign: ArticleHeaderAlign;
+  showViewAll: boolean;
+  viewAllLabel: LocalizedText;
+  viewAllLink: string;
+  viewAllPosition: ArticleViewAllPosition;
+}
+
+export interface ArticleBoxRecord {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  settings: ArticleBoxSettings;
+}
