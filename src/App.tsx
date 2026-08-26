@@ -1,30 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  AppstoreOutlined,
   ArrowLeftOutlined,
   DeleteOutlined,
   EditOutlined,
-  EnvironmentOutlined,
   ExperimentOutlined,
   EyeOutlined,
   FileOutlined,
-  FireOutlined,
-  GiftOutlined,
   GlobalOutlined,
+  HomeOutlined,
   InboxOutlined,
-  LayoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  OrderedListOutlined,
-  PicCenterOutlined,
   PictureOutlined,
-  PlaySquareOutlined,
   PlusOutlined,
   QuestionCircleOutlined,
   SearchOutlined,
-  ShoppingOutlined,
-  TeamOutlined,
-  ThunderboltOutlined,
+  SettingOutlined,
 } from "@ant-design/icons";
 import {
   App as AntdApp,
@@ -104,28 +95,15 @@ const TABS: { id: SettingsTab; label: string }[] = [
 ];
 
 const MENU_ITEMS: MenuProps["items"] = [
-  { key: "Grid Card", icon: <AppstoreOutlined />, label: "Grid Card" },
-  { key: "Header", icon: <LayoutOutlined />, label: "Header" },
-  { key: "Horizontal Card", icon: <PicCenterOutlined />, label: "Horizontal Card" },
-  { key: "Media Ads", icon: <PlaySquareOutlined />, label: "Media Ads" },
-  { key: "Navigation Bar", icon: <OrderedListOutlined />, label: "Navigation Bar" },
-  { key: "Product Show Boxes", icon: <InboxOutlined />, label: "Product Show Boxes" },
-  { key: "Promotion Shelf", icon: <GiftOutlined />, label: "Promotion Shelf" },
-  { key: "Shortcut", icon: <ThunderboltOutlined />, label: "Shortcut" },
-  { key: "Step Information", icon: <OrderedListOutlined />, label: "Step Information" },
-  { key: "Web Editor", icon: <EditOutlined />, label: "Web Editor" },
+  { key: "ภาพรวม", icon: <HomeOutlined />, label: "ภาพรวม" },
   { key: "Search Listing", icon: <SearchOutlined />, label: "Search Listing" },
   {
     key: "Recommended Display",
     icon: <ExperimentOutlined />,
     label: "Recommended Display",
   },
-  { key: "Flash Sale", icon: <FireOutlined />, label: "Flash Sale" },
-  { key: "Flash Sale Shelf", icon: <FireOutlined />, label: "Flash Sale Shelf" },
-  { key: "Branch", icon: <EnvironmentOutlined />, label: "Branch" },
-  { type: "divider" },
-  { key: "Customers", icon: <TeamOutlined />, label: "Customers" },
-  { key: "Products", icon: <ShoppingOutlined />, label: "Products" },
+  { key: "คลังสื่อ", icon: <InboxOutlined />, label: "คลังสื่อ" },
+  { key: "ตั้งค่า", icon: <SettingOutlined />, label: "ตั้งค่า" },
 ];
 
 type SearchListing = {
