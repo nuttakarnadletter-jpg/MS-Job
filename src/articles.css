@@ -152,6 +152,15 @@
   grid-template-columns: 1fr 1fr;
 }
 
+.abox-source-stack {
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.abox-display-mode-row {
+  grid-template-columns: 140px minmax(0, 1fr);
+}
+
 .abox-switch-row {
   display: flex;
   align-items: flex-start;
@@ -281,6 +290,61 @@
   font-size: 11px;
   line-height: 1.35;
   margin-top: 2px;
+}
+
+.abox-column-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.abox-column-btn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  border-radius: 10px;
+  padding: 8px 9px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.abox-column-btn.active {
+  border-color: var(--blue);
+  background: #f5f9ff;
+  box-shadow: 0 0 0 1px var(--blue);
+}
+
+.abox-column-btn span {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.abox-column-btn small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.25;
+  margin-top: 1px;
+}
+
+.abox-column-wire {
+  width: 54px;
+  height: 30px;
+  flex: 0 0 54px;
+  border-radius: 6px;
+  background: #f3f4f6;
+  display: grid;
+  gap: 3px;
+  padding: 5px;
+}
+
+.abox-column-wire span {
+  display: block;
+  background: #d9e6f7;
+  border-radius: 3px;
 }
 
 .abox-mini-head,

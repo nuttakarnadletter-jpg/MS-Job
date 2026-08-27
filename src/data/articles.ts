@@ -73,7 +73,6 @@ export const SAMPLE_ARTICLE_BOXES: ArticleBoxRecord[] = [
     settings: {
       ...createDefaultArticleBoxSettings("ข่าวสารหน้าแรก"),
       showFilterTabs: true,
-      filterCategories: ["SEO", "Content", "Product"],
       columns: 3,
       maxItems: 6,
       displayMode: "pagination",

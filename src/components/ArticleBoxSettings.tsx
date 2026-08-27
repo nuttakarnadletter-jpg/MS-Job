@@ -142,7 +142,7 @@ export function ArticleBoxSettings({
             title="แหล่งบทความ"
             description="เลือกหมวดที่จะดึงมาแสดง และลำดับบนหน้าเว็บ"
           >
-            <div className="abox-fields two">
+            <div className="abox-fields abox-source-stack">
               <Field label="บทความมาจากไหน">
                 <Select
                   mode="multiple"
@@ -151,6 +151,7 @@ export function ArticleBoxSettings({
                   value={settings.sourceCategories}
                   onChange={(value) => patch({ sourceCategories: value })}
                   maxTagCount="responsive"
+                  style={{ width: "100%" }}
                   options={ARTICLE_CATEGORIES.map((category) => ({
                     value: category,
                     label: category,
@@ -164,6 +165,7 @@ export function ArticleBoxSettings({
                 <Select
                   value={settings.sort}
                   onChange={(value) => patch({ sort: value as ArticleSort })}
+                  style={{ width: "100%" }}
                   options={[
                     { value: "latest", label: "ล่าสุดก่อน" },
                     { value: "oldest", label: "เก่าสุดก่อน" },
@@ -197,22 +199,6 @@ export function ArticleBoxSettings({
                     onChange={(checked) => patch({ showAllTab: checked })}
                   />
                 </div>
-                <Field
-                  label="หมวดหมู่ที่จะแสดงเป็นแท็บ"
-                  hint="ถ้าไม่เลือก ระบบจะดึงแท็บจากหมวดของบทความที่แสดงให้อัตโนมัติ"
-                >
-                  <Select
-                    mode="multiple"
-                    allowClear
-                    placeholder="เลือกเอง หรือปล่อยว่างให้ระบบจัดให้"
-                    value={settings.filterCategories}
-                    onChange={(value) => patch({ filterCategories: value })}
-                    options={ARTICLE_CATEGORIES.map((category) => ({
-                      value: category,
-                      label: category,
-                    }))}
-                  />
-                </Field>
               </div>
             ) : (
               <HiddenNotice
@@ -258,26 +244,28 @@ export function ArticleBoxSettings({
             {settings.layout === "grid" ? (
               <div className="abox-fields" style={{ marginTop: 12 }}>
                 <Field label="จำนวนคอลัมน์">
-                  <div className="abox-align">
+                  <div className="abox-column-options">
                     {(
                       [
-                        [3, "Grid 3", "รูปใหญ่ อ่านง่าย เหมาะกับบทความทั่วไป"],
-                        [4, "Grid 4", "โชว์ได้แน่นขึ้น เหมาะกับข่าวจำนวนมาก"],
+                        [3, "Grid 3", "อ่านง่าย"],
+                        [4, "Grid 4", "โชว์แน่นขึ้น"],
                       ] as const
                     ).map(([value, label, hintText]) => (
                       <button
                         key={value}
                         type="button"
-                        className={`abox-align-btn${settings.columns === value ? " active" : ""}`}
+                        className={`abox-column-btn${settings.columns === value ? " active" : ""}`}
                         onClick={() => patch({ columns: value as ArticleGridColumns })}
                       >
-                        <div className={`abox-wire abox-wire-grid abox-wire-grid-${value}`}>
+                        <div className={`abox-column-wire abox-wire-grid abox-wire-grid-${value}`}>
                           {Array.from({ length: value }, (_, index) => (
                             <span key={index} />
                           ))}
                         </div>
-                        <span>{label}</span>
-                        <small>{hintText}</small>
+                        <div>
+                          <span>{label}</span>
+                          <small>{hintText}</small>
+                        </div>
                       </button>
                     ))}
                   </div>
@@ -291,7 +279,7 @@ export function ArticleBoxSettings({
             title="จำนวนและการเลื่อนดู"
             description="กำหนดจำนวนบทความที่ดึงมา และวิธีให้ผู้ใช้ดูเพิ่ม"
           >
-            <div className="abox-fields two">
+            <div className="abox-fields two abox-display-mode-row">
               <Field label="จำนวนบทความสูงสุด">
                 <InputNumber
                   min={1}
@@ -318,6 +306,7 @@ export function ArticleBoxSettings({
                 <Select
                   value={settings.displayMode}
                   onChange={(value) => patch({ displayMode: value as ArticleDisplayMode })}
+                  style={{ width: "100%" }}
                   options={[
                     { value: "carousel", label: "เลื่อนแบบ Carousel" },
                     { value: "pagination", label: "แบ่งหน้า" },
