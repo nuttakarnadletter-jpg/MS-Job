@@ -10,6 +10,7 @@ export default defineConfig({
       input: {
         main: fileURLToPath(new URL("./index.html", import.meta.url)),
         recommend: fileURLToPath(new URL("./recommend.html", import.meta.url)),
+        formBuilder: fileURLToPath(new URL("./form-builder.html", import.meta.url)),
       },
     },
   },

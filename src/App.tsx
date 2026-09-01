@@ -2,13 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeftOutlined,
   DeleteOutlined,
+  DownloadOutlined,
   EditOutlined,
   ExperimentOutlined,
   EyeOutlined,
   FileOutlined,
+  FormOutlined,
   GlobalOutlined,
   HomeOutlined,
   InboxOutlined,
+  ProfileOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   PictureOutlined,
@@ -66,6 +69,7 @@ import {
 import { LivePreview } from "./components/LivePreview";
 import { ArticleBoxModule } from "./components/ArticleBoxModule";
 import { BodyEditor } from "./components/BodyEditor";
+import { FormBuilderModule } from "./FormBuilderModule";
 import { DragHandle, SortableItemRow } from "./components/SortableItemRow";
 import {
   CONTENT_TYPES,
@@ -99,11 +103,8 @@ const MENU_ITEMS: MenuProps["items"] = [
   { key: "ภาพรวม", icon: <HomeOutlined />, label: "ภาพรวม" },
   { key: "Search Listing", icon: <SearchOutlined />, label: "Search Listing" },
   { key: "Article Display", icon: <FileOutlined />, label: "Article Display" },
-  {
-    key: "Recommended Display",
-    icon: <ExperimentOutlined />,
-    label: "Recommended Display",
-  },
+  { key: "Custom Forms", icon: <FormOutlined />, label: "Custom Forms" },
+  { key: "Form Entries", icon: <ProfileOutlined />, label: "Form Entries" },
   { key: "คลังสื่อ", icon: <InboxOutlined />, label: "คลังสื่อ" },
   { key: "ตั้งค่า", icon: <SettingOutlined />, label: "ตั้งค่า" },
 ];
@@ -117,6 +118,49 @@ type SearchListing = {
   createdAt: string;
   updatedAt: string;
 };
+
+type CustomFormListing = {
+  id: string;
+  name: string;
+  title: string;
+  description: string;
+  languages: string[];
+  fields: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type FormEntry = {
+  id: string;
+  formId: string;
+  formName: string;
+  submitter: string;
+  email: string;
+  phone: string;
+  language: string;
+  submittedAt: string;
+  answers: Record<string, FormEntryAnswer>;
+  tracking: {
+    referrer: string;
+    landingUrl: string;
+    submitUrl: string;
+    utmSource: string;
+    utmMedium: string;
+    utmCampaign: string;
+    gclid: string;
+    fbclid: string;
+  };
+};
+
+type FormEntryImageAttachment = {
+  type: "image";
+  fileName: string;
+  size: string;
+  url: string;
+  alt?: string;
+};
+
+type FormEntryAnswer = string | FormEntryImageAttachment;
 
 const TYPE_TAG_COLOR: Record<ContentTypeId, string> = {
   job: "blue",
@@ -173,6 +217,273 @@ const SEARCH_LISTINGS: SearchListing[] = [
   },
 ];
 
+const CUSTOM_FORM_LISTINGS: CustomFormListing[] = [
+  {
+    id: "form-1",
+    name: "แบบฟอร์มลงทะเบียน",
+    title: "Registration Form",
+    description: "ฟอร์มเก็บข้อมูลผู้สมัครพร้อมข้อความ 3 ภาษา",
+    languages: ["TH", "EN", "CN"],
+    fields: 2,
+    createdAt: "2026-07-18 10:20",
+    updatedAt: "2026-08-30 14:45",
+  },
+  {
+    id: "form-2",
+    name: "แบบฟอร์มติดต่อกลับ",
+    title: "Contact Request",
+    description: "ฟอร์มสำหรับให้ลูกค้าฝากข้อมูลเพื่อติดต่อกลับ",
+    languages: ["TH", "EN"],
+    fields: 5,
+    createdAt: "2026-07-22 09:10",
+    updatedAt: "2026-08-28 16:05",
+  },
+  {
+    id: "form-3",
+    name: "แบบสอบถามความพึงพอใจ",
+    title: "Customer Feedback",
+    description: "แบบสอบถามหลังใช้บริการสำหรับทีมดูแลลูกค้า",
+    languages: ["TH", "EN", "CN"],
+    fields: 8,
+    createdAt: "2026-07-25 11:35",
+    updatedAt: "2026-08-29 12:18",
+  },
+];
+
+const MOCK_ATTACHMENT_IMAGES = {
+  receipt:
+    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='240' viewBox='0 0 360 240'%3E%3Crect width='360' height='240' rx='18' fill='%23f7fbff'/%3E%3Crect x='92' y='34' width='176' height='172' rx='12' fill='white' stroke='%23bfdbfe' stroke-width='3'/%3E%3Crect x='116' y='62' width='128' height='14' rx='7' fill='%232563eb'/%3E%3Crect x='116' y='96' width='98' height='10' rx='5' fill='%2394a3b8'/%3E%3Crect x='116' y='120' width='128' height='10' rx='5' fill='%23cbd5e1'/%3E%3Crect x='116' y='144' width='82' height='10' rx='5' fill='%23cbd5e1'/%3E%3Ccircle cx='228' cy='162' r='18' fill='%23dbeafe'/%3E%3Cpath d='M219 162l6 6 13-15' fill='none' stroke='%232563eb' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E",
+  storefront:
+    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='240' viewBox='0 0 360 240'%3E%3Crect width='360' height='240' rx='18' fill='%23f8fafc'/%3E%3Crect x='52' y='88' width='256' height='104' rx='10' fill='white' stroke='%23cbd5e1' stroke-width='3'/%3E%3Cpath d='M72 56h216l20 44H52z' fill='%232563eb'/%3E%3Cpath d='M92 56h44l-8 44H80zM180 56h44l8 44h-60zM268 56h20l20 44h-48z' fill='%2393c5fd' opacity='.9'/%3E%3Crect x='82' y='124' width='72' height='68' rx='6' fill='%23dbeafe'/%3E%3Crect x='184' y='126' width='94' height='14' rx='7' fill='%2394a3b8'/%3E%3Crect x='184' y='154' width='68' height='10' rx='5' fill='%23cbd5e1'/%3E%3C/svg%3E",
+};
+
+const FORM_ENTRIES: FormEntry[] = [
+  {
+    id: "entry-1",
+    formId: "form-1",
+    formName: "แบบฟอร์มลงทะเบียน",
+    submitter: "ณัฐกานต์ บิน",
+    email: "nuttakarn@example.com",
+    phone: "081-234-5678",
+    language: "TH",
+    submittedAt: "2026-08-31 16:42",
+    answers: {
+      "ชื่อ-นามสกุล": "ณัฐกานต์ บิน",
+      เพศ: "หญิง",
+      "สลิป/รูปภาพแนบ": {
+        type: "image",
+        fileName: "registration-slip.jpg",
+        size: "1.4 MB",
+        url: MOCK_ATTACHMENT_IMAGES.receipt,
+        alt: "Uploaded registration slip",
+      },
+      หมายเหตุ: "สนใจรับข้อมูลเพิ่มเติม",
+    },
+    tracking: {
+      referrer: "https://b78e6cff.rp-test.net/search?search=test%20add%20manual",
+      landingUrl: "https://b78e6cff.rp-test.net/checkout",
+      submitUrl:
+        "https://b78e6cff.rp-test.net/products/test%20add?quantity=1&variant=6942499999cc27e453707428",
+      utmSource: "-",
+      utmMedium: "-",
+      utmCampaign: "-",
+      gclid: "-",
+      fbclid: "-",
+    },
+  },
+  {
+    id: "entry-2",
+    formId: "form-2",
+    formName: "แบบฟอร์มติดต่อกลับ",
+    submitter: "Michael Chen",
+    email: "michael.chen@example.com",
+    phone: "+66 89 555 2100",
+    language: "EN",
+    submittedAt: "2026-08-31 14:18",
+    answers: {
+      "Full Name": "Michael Chen",
+      Email: "michael.chen@example.com",
+      "Phone Number": "+66 89 555 2100",
+      Message: "Please contact me about enterprise pricing.",
+    },
+    tracking: {
+      referrer: "https://google.com/search?q=enterprise+cms+form+builder",
+      landingUrl: "https://demo-cms.test/pricing?utm_source=google&utm_medium=cpc",
+      submitUrl: "https://demo-cms.test/contact/request-demo",
+      utmSource: "google",
+      utmMedium: "cpc",
+      utmCampaign: "enterprise-demo-q3",
+      gclid: "CjwKCAjw9uPCBhATEiwABHN9KzDemo123",
+      fbclid: "-",
+    },
+  },
+  {
+    id: "entry-3",
+    formId: "form-3",
+    formName: "แบบสอบถามความพึงพอใจ",
+    submitter: "李小明",
+    email: "li.xiaoming@example.cn",
+    phone: "+86 138 0000 8821",
+    language: "CN",
+    submittedAt: "2026-08-30 11:05",
+    answers: {
+      姓名: "李小明",
+      评分: "5",
+      反馈: "服务很好，回复速度快。",
+    },
+    tracking: {
+      referrer: "https://wechat.example.cn/article/customer-feedback",
+      landingUrl: "https://demo-cms.test/cn/survey/customer-feedback",
+      submitUrl: "https://demo-cms.test/cn/forms/customer-feedback/submit",
+      utmSource: "wechat",
+      utmMedium: "social",
+      utmCampaign: "cn-feedback-august",
+      gclid: "-",
+      fbclid: "-",
+    },
+  },
+  {
+    id: "entry-4",
+    formId: "form-1",
+    formName: "แบบฟอร์มลงทะเบียน",
+    submitter: "Ariya Wong",
+    email: "ariya.wong@example.com",
+    phone: "086-901-2233",
+    language: "EN",
+    submittedAt: "2026-08-29 09:32",
+    answers: {
+      "Full Name": "Ariya Wong",
+      Gender: "Female",
+      Note: "Registered from campaign landing page.",
+    },
+    tracking: {
+      referrer: "https://facebook.com/",
+      landingUrl:
+        "https://demo-cms.test/register?utm_source=facebook&utm_medium=paid-social&utm_campaign=leadgen-awareness",
+      submitUrl: "https://demo-cms.test/forms/registration/submit",
+      utmSource: "facebook",
+      utmMedium: "paid-social",
+      utmCampaign: "leadgen-awareness",
+      gclid: "-",
+      fbclid: "IwAR2xFormLeadExample999",
+    },
+  },
+  {
+    id: "entry-5",
+    formId: "form-2",
+    formName: "แบบฟอร์มติดต่อกลับ",
+    submitter: "Somsak P.",
+    email: "somsak.p@example.co.th",
+    phone: "089-771-2044",
+    language: "TH",
+    submittedAt: "2026-08-28 18:22",
+    answers: {
+      "ชื่อ-นามสกุล": "สมศักดิ์ พ.",
+      อีเมล: "somsak.p@example.co.th",
+      เบอร์โทรศัพท์: "089-771-2044",
+      หัวข้อ: "สอบถามการติดตั้งระบบ CMS",
+      "ภาพหน้าร้าน": {
+        type: "image",
+        fileName: "storefront-reference.png",
+        size: "2.1 MB",
+        url: MOCK_ATTACHMENT_IMAGES.storefront,
+        alt: "Uploaded storefront reference",
+      },
+      ข้อความ: "ต้องการให้ทีมติดต่อกลับเรื่องแพ็กเกจสำหรับองค์กร",
+    },
+    tracking: {
+      referrer: "https://demo-cms.test/blog/how-to-build-company-website",
+      landingUrl: "https://demo-cms.test/contact",
+      submitUrl: "https://demo-cms.test/forms/contact-request/submit",
+      utmSource: "newsletter",
+      utmMedium: "email",
+      utmCampaign: "august-product-update",
+      gclid: "-",
+      fbclid: "-",
+    },
+  },
+  {
+    id: "entry-6",
+    formId: "form-1",
+    formName: "แบบฟอร์มลงทะเบียน",
+    submitter: "Priya Raman",
+    email: "priya.raman@example.com",
+    phone: "+91 98765 43210",
+    language: "EN",
+    submittedAt: "2026-08-27 13:48",
+    answers: {
+      "Full Name": "Priya Raman",
+      Gender: "Female",
+      Company: "Bright Retail Co.",
+      "Interested Plan": "Pro",
+    },
+    tracking: {
+      referrer: "-",
+      landingUrl: "https://demo-cms.test/register?utm_source=linkedin&utm_medium=organic",
+      submitUrl: "https://demo-cms.test/forms/registration/submit",
+      utmSource: "linkedin",
+      utmMedium: "organic",
+      utmCampaign: "-",
+      gclid: "-",
+      fbclid: "-",
+    },
+  },
+  {
+    id: "entry-7",
+    formId: "form-3",
+    formName: "แบบสอบถามความพึงพอใจ",
+    submitter: "ธนา สุขใจ",
+    email: "thana.s@example.com",
+    phone: "082-448-1900",
+    language: "TH",
+    submittedAt: "2026-08-26 10:15",
+    answers: {
+      "คะแนนความพึงพอใจ": "4",
+      "ช่องทางที่ใช้บริการ": "Live chat",
+      "สิ่งที่ชอบ": "ตอบเร็วและข้อมูลชัดเจน",
+      "ข้อเสนอแนะ": "อยากให้มีคู่มือภาษาไทยเพิ่ม",
+    },
+    tracking: {
+      referrer: "https://demo-cms.test/help-center",
+      landingUrl: "https://demo-cms.test/survey/customer-feedback?source=chat",
+      submitUrl: "https://demo-cms.test/forms/customer-feedback/submit",
+      utmSource: "-",
+      utmMedium: "-",
+      utmCampaign: "-",
+      gclid: "-",
+      fbclid: "-",
+    },
+  },
+  {
+    id: "entry-8",
+    formId: "form-2",
+    formName: "แบบฟอร์มติดต่อกลับ",
+    submitter: "Emma Roberts",
+    email: "emma.roberts@example.co.uk",
+    phone: "+44 20 7946 0958",
+    language: "EN",
+    submittedAt: "2026-08-25 08:40",
+    answers: {
+      "Full Name": "Emma Roberts",
+      Email: "emma.roberts@example.co.uk",
+      "Phone Number": "+44 20 7946 0958",
+      Message: "Following up after the webinar.",
+      Consent: "Accepted",
+    },
+    tracking: {
+      referrer: "https://event.example.com/webinar/cms-growth",
+      landingUrl:
+        "https://demo-cms.test/contact?utm_source=webinar&utm_medium=partner&utm_campaign=cms-growth",
+      submitUrl: "https://demo-cms.test/forms/contact-request/submit",
+      utmSource: "webinar",
+      utmMedium: "partner",
+      utmCampaign: "cms-growth",
+      gclid: "-",
+      fbclid: "-",
+    },
+  },
+];
+
 const IMPACT_COPY: Record<SettingsTab, { title: string; body: string }> = {
   listing: {
     title: "กำลังตั้งค่าหน้ารายการ",
@@ -193,8 +504,9 @@ const IMPACT_COPY: Record<SettingsTab, { title: string; body: string }> = {
 };
 
 type Screen = "list" | "edit";
+type FormScreen = "list" | "edit";
 type EditTab = "general" | "items" | "display";
-type ActiveModule = "search-listing" | "article-display";
+type ActiveModule = "search-listing" | "article-display" | "custom-forms" | "form-entries";
 
 function parseLines(value: string) {
   const lines = value
@@ -203,6 +515,10 @@ function parseLines(value: string) {
     .filter(Boolean);
   return lines.length > 0 ? lines : undefined;
 }
+
+type AppProps = {
+  initialModule?: ActiveModule;
+};
 
 function nowStamp() {
   const date = new Date();
@@ -283,7 +599,23 @@ function itemClickAction(item?: ContentItem): ClickAction {
   return "detail";
 }
 
-export default function App() {
+function displayDash(value: string) {
+  return value.trim() || "-";
+}
+
+function isImageAttachment(value: FormEntryAnswer): value is FormEntryImageAttachment {
+  return typeof value === "object" && value.type === "image";
+}
+
+function entryAnswerText(value: FormEntryAnswer) {
+  return isImageAttachment(value) ? `${value.fileName} ${value.size}` : value;
+}
+
+function csvCell(value: string | number) {
+  return `"${String(value).replace(/"/g, '""')}"`;
+}
+
+export default function App({ initialModule = "search-listing" }: AppProps) {
   const { message } = AntdApp.useApp();
   const [settings, setSettings] = useState<DisplaySettings>(() =>
     createDefaultSettings("job"),
@@ -296,10 +628,13 @@ export default function App() {
     null,
   );
   const [screen, setScreen] = useState<Screen>("list");
-  const [activeModule, setActiveModule] = useState<ActiveModule>("search-listing");
+  const [formScreen, setFormScreen] = useState<FormScreen>("list");
+  const [activeModule, setActiveModule] = useState<ActiveModule>(initialModule);
   const [editTab, setEditTab] = useState<EditTab>("items");
   const [listings, setListings] = useState(SEARCH_LISTINGS);
+  const [customForms, setCustomForms] = useState(CUSTOM_FORM_LISTINGS);
   const [activeJobId, setActiveJobId] = useState(SEARCH_LISTINGS[0].id);
+  const [activeFormId, setActiveFormId] = useState(CUSTOM_FORM_LISTINGS[0].id);
   const [itemModalOpen, setItemModalOpen] = useState(false);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [clickAction, setClickAction] = useState<ClickAction>("detail");
@@ -312,6 +647,10 @@ export default function App() {
   const [itemDraft, setItemDraft] = useState<ItemDraft>(EMPTY_ITEM_DRAFT);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [query, setQuery] = useState("");
+  const [formQuery, setFormQuery] = useState("");
+  const [entryQuery, setEntryQuery] = useState("");
+  const [entryFormFilter, setEntryFormFilter] = useState<string>("all");
+  const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
   const [itemsByListing, setItemsByListing] = useState<
     Record<string, ContentItem[]>
   >(initialItemsByListing);
@@ -320,6 +659,9 @@ export default function App() {
   const items = itemsByListing[activeJobId] ?? [];
   const activeJob =
     listings.find((job) => job.id === activeJobId) ?? listings[0];
+  const activeCustomForm =
+    customForms.find((formItem) => formItem.id === activeFormId) ?? customForms[0];
+  const activeEntry = FORM_ENTRIES.find((entry) => entry.id === activeEntryId);
   const impact = IMPACT_COPY[tab];
   const previewMode: PreviewMode =
     previewOverride ?? (tab === "detail" ? "detail" : "listing");
@@ -344,6 +686,54 @@ export default function App() {
       );
     });
   }, [query, listings]);
+
+  const filteredCustomForms = useMemo(() => {
+    const keyword = formQuery.trim().toLowerCase();
+    if (!keyword) return customForms;
+    return customForms.filter((formItem) =>
+      [formItem.name, formItem.title, formItem.description]
+        .join(" ")
+        .toLowerCase()
+        .includes(keyword),
+    );
+  }, [customForms, formQuery]);
+
+  const filteredEntries = useMemo(() => {
+    const keyword = entryQuery.trim().toLowerCase();
+    return FORM_ENTRIES.filter((entry) => {
+      const matchesForm = entryFormFilter === "all" || entry.formId === entryFormFilter;
+      if (!matchesForm) return false;
+      if (!keyword) return true;
+      return [
+        entry.formName,
+        entry.submitter,
+        entry.email,
+        entry.phone,
+        entry.language,
+        entry.tracking.referrer,
+        entry.tracking.landingUrl,
+        entry.tracking.submitUrl,
+        entry.tracking.utmSource,
+        entry.tracking.utmMedium,
+        entry.tracking.utmCampaign,
+        entry.tracking.gclid,
+        entry.tracking.fbclid,
+        ...Object.values(entry.answers).map(entryAnswerText),
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(keyword);
+    });
+  }, [entryFormFilter, entryQuery]);
+
+  const entryCountByForm = useMemo(
+    () =>
+      FORM_ENTRIES.reduce<Record<string, number>>((counts, entry) => {
+        counts[entry.formId] = (counts[entry.formId] ?? 0) + 1;
+        return counts;
+      }, {}),
+    [],
+  );
 
   const itemSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -438,6 +828,97 @@ export default function App() {
       setScreen("list");
     }
     message.success("ลบ Search Listing แล้ว");
+  };
+
+  const addCustomForm = () => {
+    const stamp = nowStamp();
+    const formItem: CustomFormListing = {
+      id: `form-${Date.now()}`,
+      name: "ฟอร์มใหม่",
+      title: "New Form",
+      description: "เริ่มสร้างฟอร์มใหม่พร้อมข้อความหลายภาษา",
+      languages: ["TH", "EN", "CN"],
+      fields: 0,
+      createdAt: stamp,
+      updatedAt: stamp,
+    };
+    setCustomForms((current) => [formItem, ...current]);
+    setActiveFormId(formItem.id);
+    setFormScreen("edit");
+    message.success("สร้างฟอร์มใหม่แล้ว");
+  };
+
+  const openCustomFormEdit = (formItem: CustomFormListing) => {
+    setActiveFormId(formItem.id);
+    setFormScreen("edit");
+  };
+
+  const patchActiveCustomForm = (partial: Partial<CustomFormListing>) => {
+    setCustomForms((current) =>
+      current.map((formItem) =>
+        formItem.id === activeFormId
+          ? { ...formItem, updatedAt: nowStamp(), ...partial }
+          : formItem,
+      ),
+    );
+  };
+
+  const deleteCustomForm = (id: string) => {
+    const next = customForms.filter((formItem) => formItem.id !== id);
+    setCustomForms(next);
+    if (activeFormId === id) {
+      setActiveFormId(next[0]?.id ?? "");
+      setFormScreen("list");
+    }
+    message.success("ลบฟอร์มแล้ว");
+  };
+
+  const exportEntriesCsv = () => {
+    const headers = [
+      "Submitted At",
+      "Form",
+      "Language",
+      "Submitted By",
+      "Email",
+      "Phone",
+      "Answers",
+      "Referrer",
+      "Landing URL",
+      "Submit URL",
+      "UTM Source",
+      "UTM Medium",
+      "UTM Campaign",
+      "GCLID",
+      "FBCLID",
+    ];
+    const rows = filteredEntries.map((entry) => [
+      entry.submittedAt,
+      entry.formName,
+      entry.language,
+      entry.submitter,
+      entry.email,
+      entry.phone,
+      Object.entries(entry.answers)
+        .map(([label, value]) => `${label}: ${entryAnswerText(value)}`)
+        .join(" | "),
+      entry.tracking.referrer,
+      entry.tracking.landingUrl,
+      entry.tracking.submitUrl,
+      entry.tracking.utmSource,
+      entry.tracking.utmMedium,
+      entry.tracking.utmCampaign,
+      entry.tracking.gclid,
+      entry.tracking.fbclid,
+    ]);
+    const csv = [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `form-entries-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    message.success("Export CSV แล้ว");
   };
 
   const deleteItem = (id: string) => {
@@ -647,6 +1128,139 @@ export default function App() {
       dataIndex: "updatedAt",
       width: 200,
       sorter: (a, b) => a.updatedAt.localeCompare(b.updatedAt),
+    },
+  ];
+
+  const customFormColumns: TableColumnsType<CustomFormListing> = [
+    {
+      title: "",
+      key: "actions",
+      width: 96,
+      render: (_, formItem) => (
+        <Space size={4}>
+          <Button
+            type="text"
+            size="small"
+            icon={<EditOutlined />}
+            aria-label={`Edit ${formItem.name}`}
+            onClick={() => openCustomFormEdit(formItem)}
+          />
+          <Popconfirm
+            title="ลบฟอร์ม?"
+            description="รายการฟอร์มนี้จะถูกลบออกจากตัวอย่าง"
+            okText="ลบ"
+            cancelText="ยกเลิก"
+            okButtonProps={{ danger: true }}
+            onConfirm={() => deleteCustomForm(formItem.id)}
+          >
+            <Button
+              type="text"
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              aria-label={`Delete ${formItem.name}`}
+            />
+          </Popconfirm>
+        </Space>
+      ),
+    },
+    {
+      title: "Form Name",
+      dataIndex: "name",
+      render: (_, formItem) => (
+        <div>
+          <Typography.Text strong>{formItem.name}</Typography.Text>
+          <div>
+            <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+              {formItem.description}
+            </Typography.Text>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: "Languages",
+      dataIndex: "languages",
+      width: 180,
+      render: (languages: string[]) => (
+        <Space size={4} wrap>
+          {languages.map((lang) => (
+            <Tag key={lang}>{lang}</Tag>
+          ))}
+        </Space>
+      ),
+    },
+    {
+      title: "Fields",
+      dataIndex: "fields",
+      width: 120,
+      sorter: (a, b) => a.fields - b.fields,
+    },
+    {
+      title: "Entries",
+      key: "entries",
+      width: 120,
+      render: (_, formItem) => (
+        <Tag color={(entryCountByForm[formItem.id] ?? 0) > 0 ? "blue" : "default"}>
+          {entryCountByForm[formItem.id] ?? 0} entries
+        </Tag>
+      ),
+      sorter: (a, b) => (entryCountByForm[a.id] ?? 0) - (entryCountByForm[b.id] ?? 0),
+    },
+    {
+      title: "Updated At",
+      dataIndex: "updatedAt",
+      width: 200,
+      sorter: (a, b) => a.updatedAt.localeCompare(b.updatedAt),
+    },
+  ];
+
+  const formEntryColumns: TableColumnsType<FormEntry> = [
+    {
+      title: "",
+      key: "actions",
+      width: 56,
+      render: (_, entry) => (
+        <Button
+          type="text"
+          size="small"
+          icon={<EyeOutlined />}
+          aria-label={`View ${entry.submitter}`}
+          onClick={() => setActiveEntryId(entry.id)}
+        />
+      ),
+    },
+    {
+      title: "Submitted By",
+      dataIndex: "submitter",
+      width: 220,
+      render: (_, entry) => (
+        <div>
+          <Typography.Text strong>{entry.submitter}</Typography.Text>
+          <div>
+            <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+              {entry.email}
+            </Typography.Text>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: "Form",
+      dataIndex: "formName",
+      width: 200,
+      render: (_, entry) => (
+        <Space size={4} wrap>
+          <Tag color="blue">{entry.formName}</Tag>
+          <Tag>{entry.language}</Tag>
+        </Space>
+      ),
+    },
+    {
+      title: "Submitted At",
+      dataIndex: "submittedAt",
+      width: 150,
+      sorter: (a, b) => a.submittedAt.localeCompare(b.submittedAt),
     },
   ];
 
@@ -1112,6 +1726,252 @@ export default function App() {
     );
   };
 
+  const renderCustomFormsListScreen = () => (
+    <>
+      <Flex className="cms-page-head" align="center" justify="space-between" wrap gap={12}>
+        <div>
+          <Typography.Title level={3} style={{ margin: 0 }}>
+            Custom Forms
+          </Typography.Title>
+          <Typography.Text type="secondary">
+            จัดการแบบฟอร์มหลายภาษา ก่อนเข้าไปแก้ไขฟิลด์และข้อความในแต่ละฟอร์ม
+          </Typography.Text>
+        </div>
+        <Space wrap>
+          <Input
+            allowClear
+            prefix={<SearchOutlined style={{ color: "rgba(0,0,0,0.25)" }} />}
+            placeholder="Search forms"
+            value={formQuery}
+            onChange={(event) => setFormQuery(event.target.value)}
+            style={{ width: 280 }}
+          />
+          <Button type="primary" icon={<PlusOutlined />} onClick={addCustomForm}>
+            Add
+          </Button>
+        </Space>
+      </Flex>
+
+      <Card styles={{ body: { padding: 0 } }}>
+        <Table
+          rowKey="id"
+          columns={customFormColumns}
+          dataSource={filteredCustomForms}
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: false,
+            showTotal: (total) => `${total} รายการ`,
+          }}
+        />
+      </Card>
+    </>
+  );
+
+  const renderCustomFormEditScreen = () => (
+    <>
+      <Flex className="custom-form-edit-head" align="center" justify="space-between" wrap gap={12}>
+        <div>
+          <Breadcrumb
+            style={{ marginBottom: 8 }}
+            items={[
+              {
+                title: (
+                  <Button
+                    type="link"
+                    icon={<ArrowLeftOutlined />}
+                    onClick={() => setFormScreen("list")}
+                    style={{ padding: 0, height: "auto" }}
+                  >
+                    Custom Forms
+                  </Button>
+                ),
+              },
+              { title: activeCustomForm?.name ?? "New Form" },
+            ]}
+          />
+          <Typography.Title level={3} style={{ margin: 0 }}>
+            {activeCustomForm?.name === "ฟอร์มใหม่" ? "New Form" : "Edit Form"}
+          </Typography.Title>
+          <Typography.Text type="secondary">Custom Form Detail</Typography.Text>
+        </div>
+        <Button
+          type="primary"
+          disabled={!activeCustomForm?.name.trim()}
+          onClick={() => message.success("บันทึกฟอร์มแล้ว")}
+        >
+          Save
+        </Button>
+      </Flex>
+
+      <Card className="custom-form-detail-card" styles={{ body: { padding: 24 } }}>
+        <label className="custom-form-name-field">
+          <span>
+            Form Name <strong>*</strong>
+          </span>
+          <Input
+            size="large"
+            value={activeCustomForm?.name ?? ""}
+            onChange={(event) => patchActiveCustomForm({ name: event.target.value })}
+            placeholder="Enter form name"
+          />
+        </label>
+      </Card>
+
+      <FormBuilderModule />
+    </>
+  );
+
+  const renderFormEntriesScreen = () => (
+    <>
+      <Flex className="cms-page-head" align="center" justify="space-between" wrap gap={12}>
+        <div>
+          <Typography.Title level={3} style={{ margin: 0 }}>
+            Form Entries
+          </Typography.Title>
+          <Typography.Text type="secondary">
+            ดูข้อมูลที่ผู้ใช้กรอกเข้ามาจากแต่ละฟอร์ม พร้อมค้นหาและกรองตามฟอร์ม
+          </Typography.Text>
+        </div>
+        <Space wrap>
+          <Select
+            value={entryFormFilter}
+            onChange={setEntryFormFilter}
+            style={{ width: 240 }}
+            options={[
+              { value: "all", label: "All forms" },
+              ...customForms.map((formItem) => ({
+                value: formItem.id,
+                label: formItem.name,
+              })),
+            ]}
+          />
+          <Input
+            allowClear
+            prefix={<SearchOutlined style={{ color: "rgba(0,0,0,0.25)" }} />}
+            placeholder="Search entries"
+            value={entryQuery}
+            onChange={(event) => setEntryQuery(event.target.value)}
+            style={{ width: 280 }}
+          />
+        </Space>
+      </Flex>
+
+      <Card styles={{ body: { padding: 0 } }}>
+        <Table
+          className="entries-table"
+          rowKey="id"
+          columns={formEntryColumns}
+          dataSource={filteredEntries}
+          scroll={{ x: 626 }}
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: false,
+            showTotal: (total) => `${total} entries`,
+          }}
+        />
+      </Card>
+
+      <Modal
+        title="Entry Detail"
+        className="entry-detail-modal"
+        open={Boolean(activeEntry)}
+        onCancel={() => setActiveEntryId(null)}
+        width={760}
+        footer={[
+          <Button key="close" onClick={() => setActiveEntryId(null)}>
+            Close
+          </Button>,
+        ]}
+      >
+        {activeEntry ? (
+          <div className="entry-detail">
+            <Card size="small" className="entry-summary-card">
+              <div className="entry-summary-layout">
+                <div className="entry-person">
+                  <Avatar size={42} icon={<InboxOutlined />} />
+                  <div>
+                    <Typography.Text strong className="entry-person-name">
+                      {activeEntry.submitter}
+                    </Typography.Text>
+                    <div className="entry-person-contact">
+                      <Typography.Text type="secondary">{activeEntry.email}</Typography.Text>
+                      <Typography.Text type="secondary">{activeEntry.phone}</Typography.Text>
+                    </div>
+                  </div>
+                </div>
+                <div className="entry-meta-list">
+                  <div className="entry-meta-item">
+                    <FormOutlined />
+                    <span>{activeEntry.formName}</span>
+                  </div>
+                  <div className="entry-meta-item">
+                    <GlobalOutlined />
+                    <span>{activeEntry.language}</span>
+                  </div>
+                  <div className="entry-meta-time">{activeEntry.submittedAt}</div>
+                </div>
+              </div>
+            </Card>
+
+            <div className="entry-detail-grid">
+              <Card title="Form Answers" size="small">
+                <div className="entry-answer-list">
+                  {Object.entries(activeEntry.answers).map(([label, value]) => (
+                    <div className="entry-answer-row" key={label}>
+                      <Typography.Text type="secondary">{label}</Typography.Text>
+                      {isImageAttachment(value) ? (
+                        <div className="entry-attachment">
+                          <img src={value.url} alt={value.alt ?? value.fileName} />
+                          <div className="entry-attachment-info">
+                            <Space size={6}>
+                              <PictureOutlined />
+                              <Typography.Text strong>{value.fileName}</Typography.Text>
+                            </Space>
+                            <Typography.Text type="secondary">{value.size}</Typography.Text>
+                            <Button size="small" href={value.url} target="_blank">
+                              View Image
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Typography.Text>{value}</Typography.Text>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
+              <Card title="Data Tracking" size="small">
+                <Typography.Text type="secondary" className="entry-section-hint">
+                  Source and URL data captured when this form was submitted.
+                </Typography.Text>
+                <div className="entry-tracking-grid">
+                  {[
+                    ["Referrer", activeEntry.tracking.referrer],
+                    ["Landing URL", activeEntry.tracking.landingUrl],
+                    ["Submit URL", activeEntry.tracking.submitUrl],
+                    ["UTM Source", activeEntry.tracking.utmSource],
+                    ["UTM Medium", activeEntry.tracking.utmMedium],
+                    ["UTM Campaign", activeEntry.tracking.utmCampaign],
+                    ["GCLID", activeEntry.tracking.gclid],
+                    ["FBCLID", activeEntry.tracking.fbclid],
+                  ].map(([label, value]) => (
+                    <div className="entry-tracking-item" key={label}>
+                      <Typography.Text type="secondary">{label}</Typography.Text>
+                      <Typography.Text className="entry-tracking-value">
+                        {displayDash(value)}
+                      </Typography.Text>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
+    </>
+  );
+
   const renderListScreen = () => (
     <>
       <Flex className="cms-page-head" align="center" justify="space-between" wrap gap={12}>
@@ -1378,7 +2238,15 @@ export default function App() {
         <Menu
           className="cms-sider-menu"
           mode="inline"
-          selectedKeys={[activeModule === "article-display" ? "Article Display" : "Search Listing"]}
+          selectedKeys={[
+            activeModule === "article-display"
+              ? "Article Display"
+              : activeModule === "custom-forms"
+                ? "Custom Forms"
+                : activeModule === "form-entries"
+                  ? "Form Entries"
+                  : "Search Listing",
+          ]}
           items={MENU_ITEMS}
           onClick={({ key }) => {
             if (key === "Recommended Display") {
@@ -1387,6 +2255,15 @@ export default function App() {
             }
             if (key === "Article Display") {
               setActiveModule("article-display");
+              return;
+            }
+            if (key === "Custom Forms") {
+              setActiveModule("custom-forms");
+              setFormScreen("list");
+              return;
+            }
+            if (key === "Form Entries") {
+              setActiveModule("form-entries");
               return;
             }
             if (key === "Search Listing") {
@@ -1425,6 +2302,14 @@ export default function App() {
         <Content className="cms-shell-content">
           {activeModule === "article-display" ? (
             <ArticleBoxModule />
+          ) : activeModule === "custom-forms" ? (
+            formScreen === "edit" ? (
+              renderCustomFormEditScreen()
+            ) : (
+              renderCustomFormsListScreen()
+            )
+          ) : activeModule === "form-entries" ? (
+            renderFormEntriesScreen()
           ) : screen === "list" || !activeJob ? (
             renderListScreen()
           ) : (
