@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeftOutlined,
+  DatabaseOutlined,
   DeleteOutlined,
+  DownloadOutlined,
   EditOutlined,
   ExperimentOutlined,
   EyeOutlined,
@@ -610,6 +612,10 @@ function entryAnswerText(value: FormEntryAnswer) {
   return isImageAttachment(value) ? `${value.fileName} ${value.size}` : value;
 }
 
+function csvCell(value: string | number) {
+  return `"${String(value).replace(/"/g, '""')}"`;
+}
+
 export default function App({ initialModule = "search-listing" }: AppProps) {
   const { message } = AntdApp.useApp();
   const [settings, setSettings] = useState<DisplaySettings>(() =>
@@ -646,6 +652,7 @@ export default function App({ initialModule = "search-listing" }: AppProps) {
   const [entryQuery, setEntryQuery] = useState("");
   const [entryFormFilter, setEntryFormFilter] = useState<string>("all");
   const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
+  const [entryDetailTab, setEntryDetailTab] = useState("answers");
   const [itemsByListing, setItemsByListing] = useState<
     Record<string, ContentItem[]>
   >(initialItemsByListing);
@@ -866,6 +873,54 @@ export default function App({ initialModule = "search-listing" }: AppProps) {
       setFormScreen("list");
     }
     message.success("ลบฟอร์มแล้ว");
+  };
+
+  const exportEntriesCsv = () => {
+    const headers = [
+      "Submitted At",
+      "Form",
+      "Language",
+      "Submitted By",
+      "Email",
+      "Phone",
+      "Answers",
+      "Referrer",
+      "Landing URL",
+      "Submit URL",
+      "UTM Source",
+      "UTM Medium",
+      "UTM Campaign",
+      "GCLID",
+      "FBCLID",
+    ];
+    const rows = filteredEntries.map((entry) => [
+      entry.submittedAt,
+      entry.formName,
+      entry.language,
+      entry.submitter,
+      entry.email,
+      entry.phone,
+      Object.entries(entry.answers)
+        .map(([label, value]) => `${label}: ${entryAnswerText(value)}`)
+        .join(" | "),
+      entry.tracking.referrer,
+      entry.tracking.landingUrl,
+      entry.tracking.submitUrl,
+      entry.tracking.utmSource,
+      entry.tracking.utmMedium,
+      entry.tracking.utmCampaign,
+      entry.tracking.gclid,
+      entry.tracking.fbclid,
+    ]);
+    const csv = [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `form-entries-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    message.success("Export CSV แล้ว");
   };
 
   const deleteItem = (id: string) => {
@@ -1141,12 +1196,15 @@ export default function App({ initialModule = "search-listing" }: AppProps) {
       title: "Fields",
       dataIndex: "fields",
       width: 120,
+      align: "center",
+      render: (fields: number) => <Typography.Text strong>{fields}</Typography.Text>,
       sorter: (a, b) => a.fields - b.fields,
     },
     {
       title: "Entries",
       key: "entries",
       width: 120,
+      align: "center",
       render: (_, formItem) => (
         <Tag color={(entryCountByForm[formItem.id] ?? 0) > 0 ? "blue" : "default"}>
           {entryCountByForm[formItem.id] ?? 0} entries
@@ -1173,7 +1231,10 @@ export default function App({ initialModule = "search-listing" }: AppProps) {
           size="small"
           icon={<EyeOutlined />}
           aria-label={`View ${entry.submitter}`}
-          onClick={() => setActiveEntryId(entry.id)}
+          onClick={(event) => {
+            event.stopPropagation();
+            setActiveEntryId(entry.id);
+          }}
         />
       ),
     },
@@ -1197,11 +1258,20 @@ export default function App({ initialModule = "search-listing" }: AppProps) {
       dataIndex: "formName",
       width: 200,
       render: (_, entry) => (
-        <Space size={4} wrap>
-          <Tag color="blue">{entry.formName}</Tag>
-          <Tag>{entry.language}</Tag>
-        </Space>
+        <Tag color="blue">{entry.formName}</Tag>
       ),
+    },
+    {
+      title: "Language",
+      dataIndex: "language",
+      width: 110,
+      render: (language: string) => <Tag>{language}</Tag>,
+      filters: [
+        { text: "TH", value: "TH" },
+        { text: "EN", value: "EN" },
+        { text: "CN", value: "CN" },
+      ],
+      onFilter: (value, entry) => entry.language === value,
     },
     {
       title: "Submitted At",
@@ -1800,6 +1870,9 @@ export default function App({ initialModule = "search-listing" }: AppProps) {
             onChange={(event) => setEntryQuery(event.target.value)}
             style={{ width: 280 }}
           />
+          <Button icon={<DownloadOutlined />} onClick={exportEntriesCsv}>
+            Export CSV
+          </Button>
         </Space>
       </Flex>
 
@@ -1809,7 +1882,10 @@ export default function App({ initialModule = "search-listing" }: AppProps) {
           rowKey="id"
           columns={formEntryColumns}
           dataSource={filteredEntries}
-          scroll={{ x: 626 }}
+          scroll={{ x: 736 }}
+          onRow={(entry) => ({
+            onClick: () => setActiveEntryId(entry.id),
+          })}
           pagination={{
             pageSize: 10,
             showSizeChanger: false,
@@ -1817,107 +1893,182 @@ export default function App({ initialModule = "search-listing" }: AppProps) {
           }}
         />
       </Card>
-
-      <Modal
-        title="Entry Detail"
-        className="entry-detail-modal"
-        open={Boolean(activeEntry)}
-        onCancel={() => setActiveEntryId(null)}
-        width={760}
-        footer={[
-          <Button key="close" onClick={() => setActiveEntryId(null)}>
-            Close
-          </Button>,
-        ]}
-      >
-        {activeEntry ? (
-          <div className="entry-detail">
-            <Card size="small" className="entry-summary-card">
-              <div className="entry-summary-layout">
-                <div className="entry-person">
-                  <Avatar size={42} icon={<InboxOutlined />} />
-                  <div>
-                    <Typography.Text strong className="entry-person-name">
-                      {activeEntry.submitter}
-                    </Typography.Text>
-                    <div className="entry-person-contact">
-                      <Typography.Text type="secondary">{activeEntry.email}</Typography.Text>
-                      <Typography.Text type="secondary">{activeEntry.phone}</Typography.Text>
-                    </div>
-                  </div>
-                </div>
-                <div className="entry-meta-list">
-                  <div className="entry-meta-item">
-                    <FormOutlined />
-                    <span>{activeEntry.formName}</span>
-                  </div>
-                  <div className="entry-meta-item">
-                    <GlobalOutlined />
-                    <span>{activeEntry.language}</span>
-                  </div>
-                  <div className="entry-meta-time">{activeEntry.submittedAt}</div>
-                </div>
-              </div>
-            </Card>
-
-            <div className="entry-detail-grid">
-              <Card title="Form Answers" size="small">
-                <div className="entry-answer-list">
-                  {Object.entries(activeEntry.answers).map(([label, value]) => (
-                    <div className="entry-answer-row" key={label}>
-                      <Typography.Text type="secondary">{label}</Typography.Text>
-                      {isImageAttachment(value) ? (
-                        <div className="entry-attachment">
-                          <img src={value.url} alt={value.alt ?? value.fileName} />
-                          <div className="entry-attachment-info">
-                            <Space size={6}>
-                              <PictureOutlined />
-                              <Typography.Text strong>{value.fileName}</Typography.Text>
-                            </Space>
-                            <Typography.Text type="secondary">{value.size}</Typography.Text>
-                            <Button size="small" href={value.url} target="_blank">
-                              View Image
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <Typography.Text>{value}</Typography.Text>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </Card>
-
-              <Card title="Data Tracking" size="small">
-                <Typography.Text type="secondary" className="entry-section-hint">
-                  Source and URL data captured when this form was submitted.
-                </Typography.Text>
-                <div className="entry-tracking-grid">
-                  {[
-                    ["Referrer", activeEntry.tracking.referrer],
-                    ["Landing URL", activeEntry.tracking.landingUrl],
-                    ["Submit URL", activeEntry.tracking.submitUrl],
-                    ["UTM Source", activeEntry.tracking.utmSource],
-                    ["UTM Medium", activeEntry.tracking.utmMedium],
-                    ["UTM Campaign", activeEntry.tracking.utmCampaign],
-                    ["GCLID", activeEntry.tracking.gclid],
-                    ["FBCLID", activeEntry.tracking.fbclid],
-                  ].map(([label, value]) => (
-                    <div className="entry-tracking-item" key={label}>
-                      <Typography.Text type="secondary">{label}</Typography.Text>
-                      <Typography.Text className="entry-tracking-value">
-                        {displayDash(value)}
-                      </Typography.Text>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            </div>
-          </div>
-        ) : null}
-      </Modal>
     </>
   );
+
+  const renderFormEntryDetailScreen = () => {
+    if (!activeEntry) return renderFormEntriesScreen();
+    return (
+      <>
+        <Flex className="cms-page-head" align="center" justify="space-between" wrap gap={12}>
+          <div>
+            <Breadcrumb
+              style={{ marginBottom: 8 }}
+              items={[
+                {
+                  title: (
+                    <Button
+                      type="link"
+                      icon={<ArrowLeftOutlined />}
+                      onClick={() => setActiveEntryId(null)}
+                      style={{ padding: 0, height: "auto" }}
+                    >
+                      Form Entries
+                    </Button>
+                  ),
+                },
+                { title: activeEntry.submitter },
+              ]}
+            />
+            <Typography.Title level={3} style={{ margin: 0 }}>
+              Entry Detail
+            </Typography.Title>
+            <Typography.Text type="secondary">
+              ข้อมูลที่ผู้ใช้ส่งเข้ามา พร้อมคำตอบและ data tracking
+            </Typography.Text>
+          </div>
+        </Flex>
+
+        <div className="entry-detail entry-detail-page">
+          <Card size="small" className="entry-summary-card">
+            <div className="entry-summary-layout">
+              <div className="entry-person">
+                <Avatar size={42} icon={<InboxOutlined />} />
+                <div>
+                  <Typography.Text strong className="entry-person-name">
+                    {activeEntry.submitter}
+                  </Typography.Text>
+                  <div className="entry-person-contact">
+                    <Typography.Text type="secondary">{activeEntry.email}</Typography.Text>
+                    <Typography.Text type="secondary">{activeEntry.phone}</Typography.Text>
+                  </div>
+                </div>
+              </div>
+              <div className="entry-meta-list">
+                <div className="entry-meta-item">
+                  <FormOutlined />
+                  <span>{activeEntry.formName}</span>
+                </div>
+                <div className="entry-meta-item">
+                  <GlobalOutlined />
+                  <span>{activeEntry.language}</span>
+                </div>
+                <div className="entry-meta-time">{activeEntry.submittedAt}</div>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="entry-detail-tabs-card" styles={{ body: { padding: "0 16px 16px" } }}>
+            <Tabs
+              className="entry-detail-tabs"
+              activeKey={entryDetailTab}
+              onChange={setEntryDetailTab}
+              items={[
+                {
+                  key: "answers",
+                  label: "Form Answers",
+                  children: (
+                    <div className="entry-answer-list">
+                      {Object.entries(activeEntry.answers).map(([label, value]) => (
+                        <div className="entry-answer-row" key={label}>
+                          <Typography.Text type="secondary">{label}</Typography.Text>
+                          {isImageAttachment(value) ? (
+                            <div className="entry-attachment">
+                              <img src={value.url} alt={value.alt ?? value.fileName} />
+                              <div className="entry-attachment-info">
+                                <Tag color="blue" className="entry-attachment-tag">
+                                  Attachment
+                                </Tag>
+                                <Space size={6}>
+                                  <PictureOutlined />
+                                  <Typography.Text strong>{value.fileName}</Typography.Text>
+                                </Space>
+                                <Typography.Text type="secondary">{value.size}</Typography.Text>
+                                <Button size="small" href={value.url} target="_blank">
+                                  View Image
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <Typography.Text>{value}</Typography.Text>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ),
+                },
+                {
+                  key: "tracking",
+                  label: (
+                    <Space size={6}>
+                      <DatabaseOutlined />
+                      <span>Data Tracking</span>
+                    </Space>
+                  ),
+                  children: (
+                    <div className="entry-system-panel">
+                      <div className="entry-system-note">
+                        <Typography.Text strong>System captured data</Typography.Text>
+                        <Typography.Text type="secondary">
+                          ข้อมูลนี้ถูกเก็บอัตโนมัติจากระบบตอน submit ไม่ใช่ฟิลด์ที่ผู้ใช้กรอกเอง
+                        </Typography.Text>
+                      </div>
+                      <div className="entry-tracking-sections">
+                        {[
+                          {
+                            title: "System Source",
+                            rows: [["Referrer", activeEntry.tracking.referrer]],
+                          },
+                          {
+                            title: "Page URLs",
+                            rows: [
+                              ["Landing URL", activeEntry.tracking.landingUrl],
+                              ["Submit URL", activeEntry.tracking.submitUrl],
+                            ],
+                          },
+                          {
+                            title: "Campaign Parameters",
+                            rows: [
+                              ["UTM Source", activeEntry.tracking.utmSource],
+                              ["UTM Medium", activeEntry.tracking.utmMedium],
+                              ["UTM Campaign", activeEntry.tracking.utmCampaign],
+                            ],
+                          },
+                          {
+                            title: "Ad Click IDs",
+                            rows: [
+                              ["GCLID", activeEntry.tracking.gclid],
+                              ["FBCLID", activeEntry.tracking.fbclid],
+                            ],
+                          },
+                        ].map((section) => (
+                          <div className="entry-tracking-section" key={section.title}>
+                            <Typography.Text className="entry-tracking-section-title">
+                              {section.title}
+                            </Typography.Text>
+                            <div className="entry-tracking-grid">
+                              {section.rows.map(([label, value]) => (
+                                <div className="entry-tracking-item" key={label}>
+                                  <Typography.Text type="secondary">{label}</Typography.Text>
+                                  <Typography.Text className="entry-tracking-value">
+                                    {displayDash(value)}
+                                  </Typography.Text>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ),
+                },
+              ]}
+            />
+          </Card>
+        </div>
+      </>
+    );
+  };
 
   const renderListScreen = () => (
     <>
@@ -2211,6 +2362,7 @@ export default function App({ initialModule = "search-listing" }: AppProps) {
             }
             if (key === "Form Entries") {
               setActiveModule("form-entries");
+              setActiveEntryId(null);
               return;
             }
             if (key === "Search Listing") {
@@ -2256,7 +2408,7 @@ export default function App({ initialModule = "search-listing" }: AppProps) {
               renderCustomFormsListScreen()
             )
           ) : activeModule === "form-entries" ? (
-            renderFormEntriesScreen()
+            activeEntry ? renderFormEntryDetailScreen() : renderFormEntriesScreen()
           ) : screen === "list" || !activeJob ? (
             renderListScreen()
           ) : (
