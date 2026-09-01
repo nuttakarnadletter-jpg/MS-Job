@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeftOutlined,
   DeleteOutlined,
-  DownloadOutlined,
   EditOutlined,
   ExperimentOutlined,
   EyeOutlined,
@@ -611,10 +610,6 @@ function entryAnswerText(value: FormEntryAnswer) {
   return isImageAttachment(value) ? `${value.fileName} ${value.size}` : value;
 }
 
-function csvCell(value: string | number) {
-  return `"${String(value).replace(/"/g, '""')}"`;
-}
-
 export default function App({ initialModule = "search-listing" }: AppProps) {
   const { message } = AntdApp.useApp();
   const [settings, setSettings] = useState<DisplaySettings>(() =>
@@ -871,54 +866,6 @@ export default function App({ initialModule = "search-listing" }: AppProps) {
       setFormScreen("list");
     }
     message.success("ลบฟอร์มแล้ว");
-  };
-
-  const exportEntriesCsv = () => {
-    const headers = [
-      "Submitted At",
-      "Form",
-      "Language",
-      "Submitted By",
-      "Email",
-      "Phone",
-      "Answers",
-      "Referrer",
-      "Landing URL",
-      "Submit URL",
-      "UTM Source",
-      "UTM Medium",
-      "UTM Campaign",
-      "GCLID",
-      "FBCLID",
-    ];
-    const rows = filteredEntries.map((entry) => [
-      entry.submittedAt,
-      entry.formName,
-      entry.language,
-      entry.submitter,
-      entry.email,
-      entry.phone,
-      Object.entries(entry.answers)
-        .map(([label, value]) => `${label}: ${entryAnswerText(value)}`)
-        .join(" | "),
-      entry.tracking.referrer,
-      entry.tracking.landingUrl,
-      entry.tracking.submitUrl,
-      entry.tracking.utmSource,
-      entry.tracking.utmMedium,
-      entry.tracking.utmCampaign,
-      entry.tracking.gclid,
-      entry.tracking.fbclid,
-    ]);
-    const csv = [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `form-entries-${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-    message.success("Export CSV แล้ว");
   };
 
   const deleteItem = (id: string) => {
